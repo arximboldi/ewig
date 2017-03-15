@@ -7,7 +7,10 @@
  **/
 
 #include <immer/flex_vector.hpp>
+
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+
 #include <iostream>
 
 namespace ewig {
@@ -15,6 +18,10 @@ namespace ewig {
 int init_window()
 {
     SDL_Init(SDL_INIT_VIDEO);
+    if (TTF_Init() == -1) {
+        std::cerr << " Failed to initialize TTF: " << SDL_GetError() << std::endl;
+        return 1;
+    }
 
     auto window = SDL_CreateWindow(
         "eWig - Maria's tOll eDitor",
@@ -28,10 +35,25 @@ int init_window()
         std::cerr << "Could not create window: " << SDL_GetError() << std::endl;
         return 1;
     }
+    auto renderer = SDL_CreateRenderer(window, -1, 0);
+    auto font = TTF_OpenFont("/home/raskolnikov/.fonts/Inconsolata-Regular.ttf", 12);
+    if (!font) {
+        std::cerr << "Erro loading font: " << TTF_GetError() << std::endl;
+        return 1;
+    }
+
+    auto color = SDL_Color{255, 255, 255};
+    auto surface = TTF_RenderText_Solid(font, "Wilkommen bei Ewig", color);
+    auto texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
 
     SDL_Delay(3000);
 
     SDL_DestroyWindow(window);
+    TTF_CloseFont(font);
+    SDL_DestroyTexture(texture);
+    SDL_FreeSurface(surface);
 
     SDL_Quit();
     return 0;
