@@ -36,7 +36,7 @@ int init_window()
         return 1;
     }
     auto renderer = SDL_CreateRenderer(window, -1, 0);
-    auto font = TTF_OpenFont("/home/raskolnikov/.fonts/Inconsolata-Regular.ttf", 12);
+    auto font = TTF_OpenFont("/home/raskolnikov/.fonts/Inconsolata-Regular.ttf", 24);
     if (!font) {
         std::cerr << "Erro loading font: " << TTF_GetError() << std::endl;
         return 1;
@@ -45,7 +45,11 @@ int init_window()
     auto color = SDL_Color{255, 255, 255};
     auto surface = TTF_RenderText_Solid(font, "Wilkommen bei Ewig", color);
     auto texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+
+    auto rect = SDL_Rect{20, 20};
+    SDL_QueryTexture(texture, nullptr, nullptr, &rect.w, &rect.h);
+
+    SDL_RenderCopy(renderer, texture, nullptr, &rect);
     SDL_RenderPresent(renderer);
 
     SDL_Delay(3000);
