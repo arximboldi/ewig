@@ -9,8 +9,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
+find_package(Boost 1.56 REQUIRED)
 
 include_directories(
+  ${Boost_INCLUDE_DIR}
   ${CURSES_INCLUDE_DIR}
   "${PROJECT_SOURCE_DIR}/src"
   "${PROJECT_SOURCE_DIR}/deps/immer")
