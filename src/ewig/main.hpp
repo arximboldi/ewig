@@ -18,9 +18,10 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include <ewig/main.hpp>
+#include <immer/flex_vector.hpp>
 
-int main(int argc, char* argv[])
-{
-    return ewig::run(argc, argv);
-}
+namespace ewig {
+
+int run(int arc, char* argv[]);
+
+} // namespace ewig

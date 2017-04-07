@@ -18,9 +18,20 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include <ewig/main.hpp>
+#include "ewig/main.hpp"
 
-int main(int argc, char* argv[])
+#include <ncurses.h>
+
+namespace ewig {
+
+int run(int arc, char* argv[])
 {
-    return ewig::run(argc, argv);
+    initscr();
+    raw();
+    printw("Hello world");
+    getch();
+    endwin();
+    return 0;
 }
+
+} // namespace ewig
