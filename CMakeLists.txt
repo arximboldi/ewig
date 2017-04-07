@@ -7,7 +7,7 @@ find_package(Curses REQUIRED)
 include_directories(
   ${CURSES_INCLUDE_DIR}
   "${PROJECT_SOURCE_DIR}/src"
-  "${PROJECT_SOURCE_DIR}/../immer")
+  "${PROJECT_SOURCE_DIR}/deps/immer")
 
 add_executable(ewig
   src/main.cpp
