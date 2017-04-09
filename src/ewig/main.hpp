@@ -31,7 +31,7 @@ namespace ewig {
 using line = immer::flex_vector<char>;
 using text = immer::flex_vector<line>;
 
-using index = typename line::size_type;
+using index = int;
 
 struct coord
 {

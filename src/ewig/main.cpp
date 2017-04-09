@@ -54,6 +54,58 @@ app_state put_message(app_state state, string_t str)
     return state;
 }
 
+coord actual_cursor(file_buffer buf)
+{
+    return {
+        buf.cursor.row,
+        std::min(buf.cursor.row < (index)buf.content.size()
+                 ? (index)buf.content[buf.cursor.row].size() : 0,
+                 buf.cursor.col)
+    };
+}
+
+file_buffer move_cursor_up(file_buffer buf)
+{
+    buf.cursor.row = std::max(buf.cursor.row - 1, 0);
+    return buf;
+}
+
+file_buffer move_cursor_down(file_buffer buf)
+{
+    buf.cursor.row = std::min(buf.cursor.row + 1, (index)buf.content.size());
+    return buf;
+}
+
+file_buffer move_cursor_left(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+    if (cur.col - 1 < 0) {
+        if (cur.row > 0) {
+            buf.cursor.row -= 1;
+            buf.cursor.col = buf.cursor.row < (index)buf.content.size()
+                           ? (index)buf.content[buf.cursor.row].size() : 0;
+        }
+    } else  {
+        buf.cursor.col = std::max(0, cur.col - 1);
+    }
+
+    return buf;
+}
+
+file_buffer move_cursor_right(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+    auto max = buf.cursor.row < (index)buf.content.size()
+             ? (index)buf.content[buf.cursor.row].size() : 0;
+    if (cur.col + 1 > max) {
+        buf = move_cursor_down(buf);
+        buf.cursor.col = 0;
+    } else {
+        buf.cursor.col = std::max(0, buf.cursor.col + 1);
+    }
+    return buf;
+}
+
 boost::optional<app_state> handle_key(app_state state, int key)
 {
     using namespace std::string_literals;
@@ -61,12 +113,16 @@ boost::optional<app_state> handle_key(app_state state, int key)
     if (keybound(key, 0)) {
         switch (key) {
         case KEY_UP:
+            state.buffer = move_cursor_up(state.buffer);
             break;
         case KEY_DOWN:
+            state.buffer = move_cursor_down(state.buffer);
             break;
         case KEY_LEFT:
+            state.buffer = move_cursor_left(state.buffer);
             break;
         case KEY_RIGHT:
+            state.buffer = move_cursor_right(state.buffer);
             break;
         default:
             break;
@@ -91,11 +147,11 @@ boost::optional<app_state> handle_key(app_state state, int key)
 void draw_text(const text& t, coord scroll, coord size)
 {
     attrset(A_NORMAL);
-    auto first_line = std::min(scroll.row, t.size());
-    auto last_line = std::min(size.row + scroll.row, t.size());
+    auto first_line = std::min(scroll.row, (index)t.size());
+    auto last_line = std::min(size.row + scroll.row, (index)t.size());
     immer::for_each_i(t, first_line, last_line, [&] (auto l) {
-        auto first_char = std::min(scroll.col, l.size());
-        auto last_char = std::min(size.col + scroll.col, l.size());
+        auto first_char = std::min(scroll.col, (index)l.size());
+        auto last_char = std::min(size.col + scroll.col, (index)l.size());
         auto str = std::string{l.begin() + first_char, l.begin() + last_char};
         printw("%s\n", str.c_str());
     });
@@ -145,7 +201,7 @@ void draw(const app_state& app)
         draw_message(app.messages.back());
     }
 
-    draw_text_cursor(app.buffer.cursor, app.buffer.scroll, size);
+    draw_text_cursor(actual_cursor(app.buffer), app.buffer.scroll, size);
     refresh();
 }
 
