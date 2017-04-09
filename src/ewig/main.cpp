@@ -106,23 +106,50 @@ file_buffer move_cursor_right(file_buffer buf)
     return buf;
 }
 
+file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
+{
+    auto cur = actual_cursor(buf);
+    if (cur.row >= wsize.row + buf.scroll.row) {
+        buf.scroll.row = cur.row - wsize.row + 1;
+    } else if (cur.row < buf.scroll.row) {
+        buf.scroll.row = cur.row;
+    }
+
+    if (cur.col >= wsize.col + buf.scroll.col) {
+        buf.scroll.col = cur.col - wsize.col + 1;
+    } else if (cur.col < buf.scroll.col) {
+        buf.scroll.col = cur.col;
+    }
+
+    return buf;
+}
+
 boost::optional<app_state> handle_key(app_state state, int key)
 {
     using namespace std::string_literals;
 
+    int maxrow, maxcol;
+    getmaxyx(stdscr, maxrow, maxcol);
+    // make space for minibuffer and modeline
+    auto window_size = coord{maxrow - 2, maxcol};
+
     if (keybound(key, 0)) {
         switch (key) {
         case KEY_UP:
-            state.buffer = move_cursor_up(state.buffer);
+            state.buffer = scroll_to_cursor(move_cursor_up(state.buffer),
+                                            window_size);
             break;
         case KEY_DOWN:
-            state.buffer = move_cursor_down(state.buffer);
+            state.buffer = scroll_to_cursor(move_cursor_down(state.buffer),
+                                            window_size);
             break;
         case KEY_LEFT:
-            state.buffer = move_cursor_left(state.buffer);
+            state.buffer = scroll_to_cursor(move_cursor_left(state.buffer),
+                                            window_size);
             break;
         case KEY_RIGHT:
-            state.buffer = move_cursor_right(state.buffer);
+            state.buffer = scroll_to_cursor(move_cursor_right(state.buffer),
+                                            window_size);
             break;
         default:
             break;
@@ -131,6 +158,8 @@ boost::optional<app_state> handle_key(app_state state, int key)
     } else if (std::iscntrl(key)) {
         switch (key) {
         case '\003': // ctrl-c
+            return {};
+        case '\033': // escape
             return {};
         default:
             break;
@@ -147,13 +176,16 @@ boost::optional<app_state> handle_key(app_state state, int key)
 void draw_text(const text& t, coord scroll, coord size)
 {
     attrset(A_NORMAL);
+    int col, row;
+    getyx(stdscr, col, row);
     auto first_line = std::min(scroll.row, (index)t.size());
     auto last_line = std::min(size.row + scroll.row, (index)t.size());
     immer::for_each_i(t, first_line, last_line, [&] (auto l) {
         auto first_char = std::min(scroll.col, (index)l.size());
         auto last_char = std::min(size.col + scroll.col, (index)l.size());
         auto str = std::string{l.begin() + first_char, l.begin() + last_char};
-        printw("%s\n", str.c_str());
+        move(row++, col);
+        printw("%s", str.c_str());
     });
 }
 
