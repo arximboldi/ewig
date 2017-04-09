@@ -21,6 +21,7 @@
 #include "ewig/main.hpp"
 
 #include <immer/flex_vector_transient.hpp>
+#include <immer/algorithm.hpp>
 #include <boost/optional.hpp>
 
 #include <ncurses.h>
@@ -87,8 +88,17 @@ boost::optional<app_state> handle_key(app_state state, int key)
     return state;
 }
 
-void draw_text(const text& t, coord scrooll, coord size)
+void draw_text(const text& t, coord scroll, coord size)
 {
+    attrset(A_NORMAL);
+    auto first_line = std::min(scroll.row, t.size());
+    auto last_line = std::min(size.row + scroll.row, t.size());
+    immer::for_each_i(t, first_line, last_line, [&] (auto l) {
+        auto first_char = std::min(scroll.col, l.size());
+        auto last_char = std::min(size.col + scroll.col, l.size());
+        auto str = std::string{l.begin() + first_char, l.begin() + last_char};
+        printw("%s\n", str.c_str());
+    });
 }
 
 void draw_mode_line(const file_buffer& buffer, int maxcol)
