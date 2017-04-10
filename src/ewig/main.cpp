@@ -88,7 +88,6 @@ file_buffer move_cursor_left(file_buffer buf)
     } else  {
         buf.cursor.col = std::max(0, cur.col - 1);
     }
-
     return buf;
 }
 
@@ -114,13 +113,11 @@ file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
     } else if (cur.row < buf.scroll.row) {
         buf.scroll.row = cur.row;
     }
-
     if (cur.col >= wsize.col + buf.scroll.col) {
         buf.scroll.col = cur.col - wsize.col + 1;
     } else if (cur.col < buf.scroll.col) {
         buf.scroll.col = cur.col;
     }
-
     return buf;
 }
 
