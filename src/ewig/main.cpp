@@ -175,15 +175,18 @@ boost::optional<app_state> handle_key(app_state state, int key)
 
 void draw_text(const text& t, coord scroll, coord size)
 {
+    using namespace std;
     attrset(A_NORMAL);
     int col, row;
     getyx(stdscr, col, row);
-    auto first_line = std::min(scroll.row, (index)t.size());
-    auto last_line = std::min(size.row + scroll.row, (index)t.size());
-    immer::for_each_i(t, first_line, last_line, [&] (auto l) {
-        auto first_char = std::min(scroll.col, (index)l.size());
-        auto last_char = std::min(size.col + scroll.col, (index)l.size());
-        auto str = std::string{l.begin() + first_char, l.begin() + last_char};
+    auto str      = std::string{};
+    auto first_ln = begin(t) + min(scroll.row, (index)t.size());
+    auto last_ln  = begin(t) + min(size.row + scroll.row, (index)t.size());
+    immer::for_each(first_ln, last_ln, [&] (auto l) {
+        str.clear();
+        auto first_ch = begin(l) + min(scroll.col, (index)l.size());
+        auto last_ch  = begin(l) + min(size.col + scroll.col, (index)l.size());
+        immer::copy(first_ch, last_ch, back_inserter(str));
         move(row++, col);
         printw("%s", str.c_str());
     });
