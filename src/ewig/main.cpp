@@ -121,23 +121,27 @@ file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
     return buf;
 }
 
+file_buffer insert_new_line(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+    if (cur.row == (index)buf.content.size()) {
+        buf.content = buf.content.push_back({});
+        return move_cursor_down(buf);
+    } else {
+        auto ln = buf.content[cur.row];
+        buf.content = buf.content
+            .set(cur.row, ln.take(cur.col))
+            .insert(cur.row + 1, ln.drop(cur.col));
+        buf = move_cursor_down(buf);
+        buf.cursor.col = 0;
+        return buf;
+    }
+}
+
 file_buffer insert_char(file_buffer buf, char value)
 {
     auto cur = actual_cursor(buf);
-    if (value == '\n') {
-        if (cur.row == (index)buf.content.size()) {
-            buf.content = buf.content.push_back({});
-            return move_cursor_down(buf);
-        } else {
-            auto ln = buf.content[cur.row];
-            buf.content = buf.content
-                .set(cur.row, ln.take(cur.col))
-                .insert(cur.row + 1, ln.drop(cur.col));
-            buf = move_cursor_down(buf);
-            buf.cursor.col = 0;
-            return buf;
-        }
-    } else if (cur.row == (index)buf.content.size()) {
+    if (cur.row == (index)buf.content.size()) {
         buf.content = buf.content.push_back({value});
         return move_cursor_right(buf);
     } else {
@@ -186,7 +190,7 @@ boost::optional<app_state> handle_key(app_state state, int key)
         case '\033': // escape
             return {};
         case '\012': // intro
-            state.buffer = scroll_to_cursor(insert_char(state.buffer, '\n'),
+            state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
                                             window_size);
             break;
         default:
