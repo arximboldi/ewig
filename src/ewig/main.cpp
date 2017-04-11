@@ -146,13 +146,13 @@ file_buffer insert_char(file_buffer buf, char value)
     auto cur = actual_cursor(buf);
     if (cur.row == (index)buf.content.size()) {
         buf.content = buf.content.push_back({value});
-        return move_cursor_right(buf);
     } else {
         buf.content = buf.content.update(cur.row, [&] (auto l) {
             return l.insert(cur.col, value);
         });
-        return move_cursor_right(buf);
     }
+    buf.cursor.col = cur.col + 1;
+    return buf;
 }
 
 file_buffer delete_char(file_buffer buf)
