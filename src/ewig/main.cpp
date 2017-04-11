@@ -152,6 +152,45 @@ file_buffer insert_char(file_buffer buf, char value)
     }
 }
 
+file_buffer delete_char(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+
+    if (cur.col >= 1) {
+        buf.content = buf.content.update(cur.row, [&] (auto l) {
+            return l.erase(cur.col - 1);
+        });
+        buf.cursor.col = cur.col - 1;
+    } else if (cur.col == 0 && cur.row > 0) {
+        auto ln1 = buf.content[cur.row - 1];
+        if (cur.row < (index)buf.content.size()) {
+            buf.content = buf.content
+                .update(cur.row, [&] (auto ln2) { return ln1 + ln2; })
+                .erase(cur.row - 1);
+        }
+        buf.cursor.row --;
+        buf.cursor.col = ln1.size();
+    }
+    return buf;
+}
+
+file_buffer delete_char_right(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+
+    if (cur.col < (index)buf.content[cur.row].size()) {
+        buf.content = buf.content.update(cur.row, [&] (auto l) {
+            return l.erase(cur.col);
+        });
+    } else if (cur.row + 1 < (index)buf.content.size()) {
+        auto ln2 = buf.content[cur.row + 1];
+        buf.content = buf.content
+            .update(cur.row, [&] (auto ln1) { return ln1 + ln2; })
+            .erase(cur.row + 1);
+    }
+    return buf;
+}
+
 boost::optional<app_state> handle_key(app_state state, int key)
 {
     using namespace std::string_literals;
@@ -177,6 +216,14 @@ boost::optional<app_state> handle_key(app_state state, int key)
             break;
         case KEY_RIGHT:
             state.buffer = scroll_to_cursor(move_cursor_right(state.buffer),
+                                            window_size);
+            break;
+        case KEY_BACKSPACE:
+            state.buffer = scroll_to_cursor(delete_char(state.buffer),
+                                            window_size);
+            break;
+        case KEY_DC:
+            state.buffer = scroll_to_cursor(delete_char_right(state.buffer),
                                             window_size);
             break;
         default:
