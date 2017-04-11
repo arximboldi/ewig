@@ -104,6 +104,19 @@ file_buffer move_cursor_down(file_buffer buf)
     return buf;
 }
 
+file_buffer move_line_start(file_buffer buf)
+{
+    buf.cursor.col = 0;
+    return buf;
+}
+
+file_buffer move_line_end(file_buffer buf)
+{
+    if (buf.cursor.row < (index)buf.content.size())
+        buf.cursor.col = buf.content[buf.cursor.row].size();
+    return buf;
+}
+
 file_buffer move_cursor_left(file_buffer buf)
 {
     auto cur = actual_cursor(buf);
@@ -269,10 +282,18 @@ boost::optional<app_state> handle_key(app_state state, int key)
         return put_message(state, "ncurses key pressed: "s + keyname(key));
     } else if (std::iscntrl(key)) {
         switch (key) {
+        case '\001': // ctrl-a
+            state.buffer = scroll_to_cursor(move_line_start(state.buffer),
+                                            window_size);
+            break;
         case '\003': // ctrl-c
             return {};
         case '\033': // escape
             return {};
+        case '\005': // ctrl-e
+            state.buffer = scroll_to_cursor(move_line_end(state.buffer),
+                                            window_size);
+            break;
         case '\012': // intro
             state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
                                             window_size);
