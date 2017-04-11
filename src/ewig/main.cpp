@@ -235,6 +235,21 @@ file_buffer delete_char_right(file_buffer buf)
     return buf;
 }
 
+file_buffer delete_rest(file_buffer buf)
+{
+    if (buf.cursor.row < (index)buf.content.size()) {
+        auto ln = buf.content[buf.cursor.row];
+        if (buf.cursor.col < (index)ln.size()) {
+            buf.content = buf.content.set(buf.cursor.row, ln.take(buf.cursor.col));
+            return buf;
+        } else {
+            return delete_char_right(buf);
+        }
+    } else {
+        return buf;
+    }
+}
+
 boost::optional<app_state> handle_key(app_state state, int key)
 {
     using namespace std::string_literals;
@@ -288,8 +303,6 @@ boost::optional<app_state> handle_key(app_state state, int key)
             break;
         case '\003': // ctrl-c
             return {};
-        case '\033': // escape
-            return {};
         case '\005': // ctrl-e
             state.buffer = scroll_to_cursor(move_line_end(state.buffer),
                                             window_size);
@@ -298,6 +311,12 @@ boost::optional<app_state> handle_key(app_state state, int key)
             state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
                                             window_size);
             break;
+        case '\013': // ctrl-k
+            state.buffer = scroll_to_cursor(delete_rest(state.buffer),
+                                            window_size);
+            break;
+        case '\033': // escape
+            return {};
         default:
             break;
         }
