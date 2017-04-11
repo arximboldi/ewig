@@ -129,9 +129,12 @@ file_buffer insert_new_line(file_buffer buf)
         return move_cursor_down(buf);
     } else {
         auto ln = buf.content[cur.row];
-        buf.content = buf.content
-            .set(cur.row, ln.take(cur.col))
-            .insert(cur.row + 1, ln.drop(cur.col));
+        if (cur.row + 1 < (index)buf.content.size() ||
+            cur.col + 1 < (index)ln.size()) {
+            buf.content = buf.content
+                .set(cur.row, ln.take(cur.col))
+                .insert(cur.row + 1, ln.drop(cur.col));
+        }
         buf = move_cursor_down(buf);
         buf.cursor.col = 0;
         return buf;
