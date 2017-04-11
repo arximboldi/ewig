@@ -64,6 +64,34 @@ coord actual_cursor(file_buffer buf)
     };
 }
 
+file_buffer page_up(file_buffer buf, coord size)
+{
+    if (buf.scroll.row > size.row) {
+        buf.scroll.row -= size.row;
+        if (buf.cursor.row >= buf.scroll.row + size.row)
+            buf.cursor.row = buf.scroll.row + size.row - 1;
+    } else if (buf.scroll.row > 0) {
+        buf.scroll.row = 0;
+        if (buf.cursor.row >= size.row)
+            buf.cursor.row = size.row - 1;
+    } else {
+        buf.cursor.row = 0;
+    }
+    return buf;
+}
+
+file_buffer page_down(file_buffer buf, coord size)
+{
+    if (buf.scroll.row + size.row < (index)buf.content.size()) {
+        buf.scroll.row += size.row;
+        if (buf.cursor.row < buf.scroll.row)
+            buf.cursor.row = buf.scroll.row;
+    } else {
+        buf.cursor.row = buf.content.size();
+    }
+    return buf;
+}
+
 file_buffer move_cursor_up(file_buffer buf)
 {
     buf.cursor.row = std::max(buf.cursor.row - 1, 0);
@@ -228,6 +256,12 @@ boost::optional<app_state> handle_key(app_state state, int key)
         case KEY_DC:
             state.buffer = scroll_to_cursor(delete_char_right(state.buffer),
                                             window_size);
+            break;
+        case KEY_PPAGE:
+            state.buffer = page_up(state.buffer, window_size);
+            break;
+        case KEY_NPAGE:
+            state.buffer = page_down(state.buffer, window_size);
             break;
         default:
             break;
