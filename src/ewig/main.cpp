@@ -35,6 +35,8 @@ namespace ewig {
 
 namespace {
 
+constexpr auto tab_width = 8;
+
 file_buffer load_file(const char* file_name)
 {
     auto file = std::wifstream{file_name};
@@ -62,6 +64,27 @@ coord actual_cursor(file_buffer buf)
                  ? (index)buf.content[buf.cursor.row].size() : 0,
                  buf.cursor.col)
     };
+}
+
+index display_line_col(const line& ln, index col)
+{
+    using namespace std;
+    auto cur_col = index{};
+    immer::for_each(begin(ln), begin(ln) + col, [&] (auto c) {
+        if (c == '\t') {
+            cur_col += tab_width - (cur_col % tab_width);
+        } else
+            ++cur_col;
+    });
+    return cur_col;
+}
+
+coord actual_display_cursor(const file_buffer& buf)
+{
+    auto cursor = actual_cursor(buf);
+    if (cursor.row < (index)buf.content.size())
+        cursor.col = display_line_col(buf.content[cursor.row], cursor.col);
+    return cursor;
 }
 
 file_buffer page_up(file_buffer buf, coord size)
@@ -148,7 +171,7 @@ file_buffer move_cursor_right(file_buffer buf)
 
 file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
 {
-    auto cur = actual_cursor(buf);
+    auto cur = actual_display_cursor(buf);
     if (cur.row >= wsize.row + buf.scroll.row) {
         buf.scroll.row = cur.row - wsize.row + 1;
     } else if (cur.row < buf.scroll.row) {
@@ -309,7 +332,11 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
             state.buffer = scroll_to_cursor(move_line_end(state.buffer),
                                             window_size);
             break;
-        case L'\012': // intro
+        case L'\011': // ctrl-i/tab
+            state.buffer = scroll_to_cursor(insert_char(state.buffer, '\t'),
+                                            window_size);
+            break;
+        case L'\012': // ctrl-j/intro
             state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
                                             window_size);
             break;
@@ -333,6 +360,28 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
     return state;
 }
 
+void display_line_fill(const line& ln, int first_col, int num_col,
+                       std::wstring& str)
+{
+    using namespace std;
+    auto cur_col = index{};
+    for (auto c : ln) {
+        if (num_col == (index)str.size())
+            return;
+        else if (c == '\t') {
+            auto next_col = cur_col + tab_width - (cur_col % tab_width);
+            auto to_fill  = std::min(next_col, first_col + num_col) -
+                            std::max(cur_col, first_col);
+            std::fill_n(back_inserter(str), to_fill, ' ');
+            cur_col = next_col;
+        } else if (cur_col >= first_col) {
+            str.push_back(c);
+            ++cur_col;
+        } else
+            ++cur_col;
+    }
+}
+
 void draw_text(const text& t, coord scroll, coord size)
 {
     using namespace std;
@@ -342,11 +391,9 @@ void draw_text(const text& t, coord scroll, coord size)
     auto str      = std::wstring{};
     auto first_ln = begin(t) + min(scroll.row, (index)t.size());
     auto last_ln  = begin(t) + min(size.row + scroll.row, (index)t.size());
-    immer::for_each(first_ln, last_ln, [&] (auto l) {
+    immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
-        auto first_ch = begin(l) + min(scroll.col, (index)l.size());
-        auto last_ch  = begin(l) + min(size.col + scroll.col, (index)l.size());
-        immer::copy(first_ch, last_ch, back_inserter(str));
+        display_line_fill(ln, scroll.col + col, size.col, str);
         move(row++, col);
         addwstr(str.c_str());
     });
@@ -369,13 +416,14 @@ void draw_message(const message& msg)
     addstr(msg.content.get().c_str());
 }
 
-void draw_text_cursor(coord cursor, coord scroll, coord size)
+void draw_text_cursor(const file_buffer& buf, coord window_size)
 {
-    move(cursor.row - scroll.row, cursor.col - scroll.col);
-    curs_set(cursor.col >= scroll.col &&
-             cursor.row >= scroll.row &&
-             cursor.col < scroll.col + size.col &&
-             cursor.row < scroll.row + size.row);
+    auto cursor = actual_display_cursor(buf);
+    move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);
+    curs_set(cursor.col >= buf.scroll.col &&
+             cursor.row >= buf.scroll.row &&
+             cursor.col < buf.scroll.col + window_size.col &&
+             cursor.row < buf.scroll.row + window_size.row);
 }
 
 void draw(const app_state& app)
@@ -397,7 +445,7 @@ void draw(const app_state& app)
         draw_message(app.messages.back());
     }
 
-    draw_text_cursor(actual_cursor(app.buffer), app.buffer.scroll, size);
+    draw_text_cursor(app.buffer, size);
     refresh();
 }
 
