@@ -28,7 +28,7 @@
 
 namespace ewig {
 
-using line = immer::flex_vector<char>;
+using line = immer::flex_vector<wchar_t>;
 using text = immer::flex_vector<line>;
 
 using index = int;

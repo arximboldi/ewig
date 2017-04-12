@@ -24,7 +24,7 @@
 #include <immer/algorithm.hpp>
 #include <boost/optional.hpp>
 
-#include <ncurses.h>
+#include <ncursesw/ncurses.h>
 
 #include <algorithm>
 #include <fstream>
@@ -37,10 +37,10 @@ namespace {
 
 file_buffer load_file(const char* file_name)
 {
-    auto file = std::ifstream{file_name};
+    auto file = std::wifstream{file_name};
     auto content = text{}.transient();
-
-    auto ln = std::string{};
+    file.exceptions(std::ifstream::badbit);
+    auto ln = std::wstring{};
     while (std::getline(file, ln))
         content.push_back({begin(ln), end(ln)});
 
@@ -182,7 +182,7 @@ file_buffer insert_new_line(file_buffer buf)
     }
 }
 
-file_buffer insert_char(file_buffer buf, char value)
+file_buffer insert_char(file_buffer buf, wchar_t value)
 {
     auto cur = actual_cursor(buf);
     if (cur.row == (index)buf.content.size()) {
@@ -250,7 +250,7 @@ file_buffer delete_rest(file_buffer buf)
     }
 }
 
-boost::optional<app_state> handle_key(app_state state, int key)
+boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
 {
     using namespace std::string_literals;
 
@@ -259,7 +259,9 @@ boost::optional<app_state> handle_key(app_state state, int key)
     // make space for minibuffer and modeline
     auto window_size = coord{maxrow - 2, maxcol};
 
-    if (keybound(key, 0)) {
+    if (res == ERR) {
+        return put_message(state, "error reading character");
+    } else if (res == KEY_CODE_YES) {
         switch (key) {
         case KEY_UP:
             state.buffer = scroll_to_cursor(move_cursor_up(state.buffer),
@@ -297,36 +299,36 @@ boost::optional<app_state> handle_key(app_state state, int key)
         return put_message(state, "ncurses key pressed: "s + keyname(key));
     } else if (std::iscntrl(key)) {
         switch (key) {
-        case '\001': // ctrl-a
+        case L'\001': // ctrl-a
             state.buffer = scroll_to_cursor(move_line_start(state.buffer),
                                             window_size);
             break;
-        case '\003': // ctrl-c
+        case L'\003': // ctrl-c
             return {};
-        case '\005': // ctrl-e
+        case L'\005': // ctrl-e
             state.buffer = scroll_to_cursor(move_line_end(state.buffer),
                                             window_size);
             break;
-        case '\012': // intro
+        case L'\012': // intro
             state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
                                             window_size);
             break;
-        case '\013': // ctrl-k
+        case L'\013': // ctrl-k
             state.buffer = scroll_to_cursor(delete_rest(state.buffer),
                                             window_size);
             break;
-        case '\033': // escape
+        case L'\033': // escape
             return {};
         default:
             break;
         }
-        return put_message(state, "control key pressed: "s + keyname(key));
+        return put_message(state, "control key pressed: "s + key_name(key));
     } else if (key == KEY_RESIZE) {
         return put_message(state, "terminal resized");
     } else {
         state.buffer = scroll_to_cursor(insert_char(state.buffer, key),
                                         window_size);
-        return put_message(state, "adding character: "s + keyname(key));
+        return put_message(state, "adding character: "s + key_name(key));
     }
     return state;
 }
@@ -337,7 +339,7 @@ void draw_text(const text& t, coord scroll, coord size)
     attrset(A_NORMAL);
     int col, row;
     getyx(stdscr, col, row);
-    auto str      = std::string{};
+    auto str      = std::wstring{};
     auto first_ln = begin(t) + min(scroll.row, (index)t.size());
     auto last_ln  = begin(t) + min(size.row + scroll.row, (index)t.size());
     immer::for_each(first_ln, last_ln, [&] (auto l) {
@@ -346,7 +348,7 @@ void draw_text(const text& t, coord scroll, coord size)
         auto last_ch  = begin(l) + min(size.col + scroll.col, (index)l.size());
         immer::copy(first_ch, last_ch, back_inserter(str));
         move(row++, col);
-        printw("%s", str.c_str());
+        addwstr(str.c_str());
     });
 }
 
@@ -363,7 +365,8 @@ void draw_mode_line(const file_buffer& buffer, int maxcol)
 void draw_message(const message& msg)
 {
     attrset(A_NORMAL);
-    printw("message: %s", msg.content.get().c_str());
+    addstr("message: ");
+    addstr(msg.content.get().c_str());
 }
 
 void draw_text_cursor(coord cursor, coord scroll, coord size)
@@ -421,9 +424,12 @@ struct tui
 
     int run()
     {
-        while (auto new_state = handle_key(state, getch())) {
+        auto key = wint_t{};
+        auto res = get_wch(&key);
+        while (auto new_state = handle_key(state, res, key)) {
             state = *new_state;
             draw(state);
+            res = get_wch(&key);
         }
         return 0;
     }
@@ -433,6 +439,8 @@ struct tui
 
 int run(int argc, char* argv[])
 {
+    std::locale::global(std::locale(""));
+
     if (argc != 2) {
         std::cerr << "Give me a file name." << std::endl;
         return 1;
