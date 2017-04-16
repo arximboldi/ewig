@@ -30,10 +30,35 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
+#include <functional>
 
 namespace ewig {
 
 namespace {
+
+using buffer_command = std::function<boost::optional<file_buffer>(file_buffer)>;
+using key_bindings = std::unordered_map<wchar_t, std::string>;
+using commands = std::unordered_map<std::string, buffer_command>;
+
+const auto global_commands = commands{
+    {"move-beginning-of-line", move_line_start},
+    {"move-end-of-line", move_line_end},
+    {"insert-tab", std::bind(insert_char, std::placeholders::_1, '\t')},
+    {"new-line", insert_new_line},
+    {"kill-line", delete_rest},
+    {"quit", [] (auto) { return boost::none; }}
+};
+
+const auto key_bindings_emacs = key_bindings{
+    {L'\001', "move-beginning-of-line"},
+    {L'\003', "quit"},
+    {L'\005', "move-end-of-line"},
+    {L'\011', "insert-tab"},
+    {L'\012', "new-line"},
+    {L'\013', "kill-line"},
+    {L'\033', "quit"}
+};
 
 void display_line_fill(const line& ln, int first_col, int num_col,
                        std::wstring& str)
@@ -172,35 +197,20 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
         }
         return put_message(state, "ncurses key pressed: "s + keyname(key));
     } else if (std::iscntrl(key)) {
-        switch (key) {
-        case L'\001': // ctrl-a
-            state.buffer = scroll_to_cursor(move_line_start(state.buffer),
-                                            window_size);
-            break;
-        case L'\003': // ctrl-c
-            return {};
-        case L'\005': // ctrl-e
-            state.buffer = scroll_to_cursor(move_line_end(state.buffer),
-                                            window_size);
-            break;
-        case L'\011': // ctrl-i/tab
-            state.buffer = scroll_to_cursor(insert_char(state.buffer, '\t'),
-                                            window_size);
-            break;
-        case L'\012': // ctrl-j/intro
-            state.buffer = scroll_to_cursor(insert_new_line(state.buffer),
-                                            window_size);
-            break;
-        case L'\013': // ctrl-k
-            state.buffer = scroll_to_cursor(delete_rest(state.buffer),
-                                            window_size);
-            break;
-        case L'\033': // escape
-            return {};
-        default:
-            break;
+        auto it = key_bindings_emacs.find(key);
+        if (it != key_bindings_emacs.end()) {
+            auto it2 = global_commands.find(it->second);
+            if (it2 != global_commands.end()) {
+                auto result = it2->second(state.buffer);
+                if (result) {
+                    state.buffer = scroll_to_cursor(*result, window_size);
+                    return put_message(state, "control key pressed: "s +
+                                       key_name(key) + " command: " + it->second);
+                } else
+                    return {};
+            }
         }
-        return put_message(state, "control key pressed: "s + key_name(key));
+        return put_message(state, "unbound control key pressed: "s + key_name(key));
     } else if (key == KEY_RESIZE) {
         return put_message(state, "terminal resized");
     } else {
