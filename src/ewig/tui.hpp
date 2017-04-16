@@ -18,26 +18,20 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "ewig/main.hpp"
-#include "ewig/tui.hpp"
+#pragma once
 
-#include <iostream>
+#include <ewig/model.hpp>
 
 namespace ewig {
 
-int run(int argc, char* argv[])
+struct tui
 {
-    std::locale::global(std::locale(""));
+    app_state state;
 
-    if (argc != 2) {
-        std::cerr << "Give me a file name." << std::endl;
-        return 1;
-    }
+    tui(const char* file_name);
+    ~tui();
 
-    tui editor{argv[1]};
-    editor.run();
-
-    return 0;
-}
+    int run();
+};
 
 } // namespace ewig

@@ -20,56 +20,7 @@
 
 #pragma once
 
-#include <immer/box.hpp>
-#include <immer/flex_vector.hpp>
-#include <immer/vector.hpp>
-
-#include <ctime>
-
 namespace ewig {
-
-using line = immer::flex_vector<wchar_t>;
-using text = immer::flex_vector<line>;
-
-using index = int;
-
-struct coord
-{
-    index row;
-    index col;
-};
-
-struct region
-{
-    text  content;
-    coord first;
-    coord last;
-};
-
-using string_t = immer::box<std::string>;
-
-struct file_buffer
-{
-    text content;
-    coord cursor;
-    coord scroll;
-    string_t file_name;
-    bool dirty;
-};
-
-struct message
-{
-    std::time_t time_stamp;
-    string_t content;
-};
-
-struct app_state
-{
-    file_buffer buffer;
-    immer::vector<file_buffer> history;
-    immer::vector<region> clipboard;
-    immer::vector<message> messages;
-};
 
 int run(int arc, char* argv[]);
 
