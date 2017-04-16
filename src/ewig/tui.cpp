@@ -50,14 +50,20 @@ const auto global_commands = commands{
     {"quit", [] (auto) { return boost::none; }}
 };
 
+wchar_t ctrl(wchar_t ch)
+{
+    assert(ch >= 'A' && ch <= '_');
+    return ch - 'A' + 1;
+}
+
 const auto key_bindings_emacs = key_bindings{
-    {L'\001', "move-beginning-of-line"}, // ctr-a
-    {L'\003', "quit"}, // ctr-c
-    {L'\005', "move-end-of-line"}, // ctr-e
-    {L'\011', "insert-tab"}, // ctr-i/tab
-    {L'\012', "new-line"}, // ctr-j
-    {L'\013', "kill-line"}, // ctr-k
-    {L'\033', "quit"} // esc
+    {ctrl('A'), "move-beginning-of-line"},
+    {ctrl('C'), "quit"},
+    {ctrl('E'), "move-end-of-line"},
+    {ctrl('I'), "insert-tab"}, // tab
+    {ctrl('J'), "new-line"}, // enter
+    {ctrl('K'), "kill-line"},
+    {ctrl('['), "quit"} // esc
 };
 
 void display_line_fill(const line& ln, int first_col, int num_col,
