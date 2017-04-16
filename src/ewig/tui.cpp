@@ -51,13 +51,13 @@ const auto global_commands = commands{
 };
 
 const auto key_bindings_emacs = key_bindings{
-    {L'\001', "move-beginning-of-line"},
-    {L'\003', "quit"},
-    {L'\005', "move-end-of-line"},
-    {L'\011', "insert-tab"},
-    {L'\012', "new-line"},
-    {L'\013', "kill-line"},
-    {L'\033', "quit"}
+    {L'\001', "move-beginning-of-line"}, // ctr-a
+    {L'\003', "quit"}, // ctr-c
+    {L'\005', "move-end-of-line"}, // ctr-e
+    {L'\011', "insert-tab"}, // ctr-i/tab
+    {L'\012', "new-line"}, // ctr-j
+    {L'\013', "kill-line"}, // ctr-k
+    {L'\033', "quit"} // esc
 };
 
 void display_line_fill(const line& ln, int first_col, int num_col,
@@ -176,6 +176,14 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
             break;
         case KEY_RIGHT:
             state.buffer = scroll_to_cursor(move_cursor_right(state.buffer),
+                                            window_size);
+            break;
+        case KEY_HOME:
+            state.buffer = scroll_to_cursor(move_line_start(state.buffer),
+                                            window_size);
+            break;
+        case KEY_END:
+            state.buffer = scroll_to_cursor(move_line_end(state.buffer),
                                             window_size);
             break;
         case KEY_BACKSPACE:
