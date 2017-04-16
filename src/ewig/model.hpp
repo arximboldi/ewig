@@ -39,13 +39,6 @@ struct coord
     index col;
 };
 
-struct region
-{
-    text  content;
-    coord first;
-    coord last;
-};
-
 using string_t = immer::box<std::string>;
 
 struct file_buffer
@@ -54,7 +47,7 @@ struct file_buffer
     coord cursor;
     coord scroll;
     string_t file_name;
-    bool dirty;
+    immer::vector<text> clipboard;
 };
 
 struct message
@@ -66,8 +59,6 @@ struct message
 struct app_state
 {
     file_buffer buffer;
-    immer::vector<file_buffer> history;
-    immer::vector<region> clipboard;
     immer::vector<message> messages;
 };
 
@@ -99,5 +90,7 @@ file_buffer delete_rest(file_buffer buf);
 
 file_buffer insert_new_line(file_buffer buf);
 file_buffer insert_char(file_buffer buf, wchar_t value);
+
+file_buffer paste(file_buffer buf);
 
 } // namespace ewig

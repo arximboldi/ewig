@@ -40,7 +40,7 @@ file_buffer load_file(const char* file_name)
     while (std::getline(file, ln))
         content.push_back({begin(ln), end(ln)});
 
-    return { content.persistent(), {}, {}, file_name, false };
+    return { content.persistent(), {}, {}, file_name };
 }
 
 app_state put_message(app_state state, string_t str)
@@ -258,13 +258,40 @@ file_buffer delete_rest(file_buffer buf)
         auto ln = buf.content[buf.cursor.row];
         if (buf.cursor.col < (index)ln.size()) {
             buf.content = buf.content.set(buf.cursor.row, ln.take(buf.cursor.col));
+            buf.clipboard = buf.clipboard.push_back({ln.drop(buf.cursor.col)});
             return buf;
         } else {
+            // Delete the end of line to join with previous line
+            buf.clipboard = buf.clipboard.push_back({{}, {}});
             return delete_char_right(buf);
         }
     } else {
         return buf;
     }
+}
+
+file_buffer paste(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+
+    if (!buf.clipboard.empty()) {
+        auto to_copy = buf.clipboard.back();
+        if (cur.row < (index)buf.content.size()) {
+            auto ln1 = buf.content[cur.row];
+            buf.content = buf.content.set(cur.row,
+                                          ln1.take(cur.col) + to_copy[0]);
+            buf.content = buf.content.take(cur.row + 1)
+                + to_copy.drop(1)
+                + buf.content.drop(cur.row + 1);
+            auto ln2 = buf.content[cur.row + to_copy.size() - 1];
+            buf.content = buf.content.set(cur.row + to_copy.size() - 1,
+                                          ln2 + ln1.drop(cur.col));
+        } else {
+            buf.content = buf.content + to_copy;
+        }
+    }
+
+    return buf;
 }
 
 } // namespace ewig

@@ -47,6 +47,7 @@ const auto global_commands = commands{
     {"insert-tab", std::bind(insert_char, std::placeholders::_1, '\t')},
     {"new-line", insert_new_line},
     {"kill-line", delete_rest},
+    {"paste", paste},
     {"quit", [] (auto) { return boost::none; }}
 };
 
@@ -63,6 +64,7 @@ const auto key_bindings_emacs = key_bindings{
     {ctrl('I'), "insert-tab"}, // tab
     {ctrl('J'), "new-line"}, // enter
     {ctrl('K'), "kill-line"},
+    {ctrl('Y'), "paste"},
     {ctrl('['), "quit"} // esc
 };
 
