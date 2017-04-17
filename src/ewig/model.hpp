@@ -24,6 +24,7 @@
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
 
+#include <boost/optional.hpp>
 #include <ctime>
 
 namespace ewig {
@@ -37,6 +38,9 @@ struct coord
 {
     index row;
     index col;
+
+    bool operator<(const coord& other) const
+    { return row < other.row || (row == other.row && col < other.col); }
 };
 
 using string_t = immer::box<std::string>;
@@ -46,6 +50,7 @@ struct file_buffer
     text content;
     coord cursor;
     coord scroll;
+    boost::optional<coord> start_selection;
     string_t file_name;
     immer::vector<text> clipboard;
 };
@@ -71,6 +76,8 @@ app_state put_message(app_state state, string_t str);
 coord actual_cursor(file_buffer buf);
 coord actual_display_cursor(const file_buffer& buf);
 
+index display_line_col(const line& ln, index col);
+
 file_buffer page_up(file_buffer buf, coord size);
 file_buffer page_down(file_buffer buf, coord size);
 
@@ -93,4 +100,6 @@ file_buffer insert_char(file_buffer buf, wchar_t value);
 
 file_buffer paste(file_buffer buf);
 
+file_buffer start_selection(file_buffer buf);
+file_buffer clear_selection(file_buffer buf);
 } // namespace ewig

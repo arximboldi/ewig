@@ -40,7 +40,7 @@ file_buffer load_file(const char* file_name)
     while (std::getline(file, ln))
         content.push_back({begin(ln), end(ln)});
 
-    return { content.persistent(), {}, {}, file_name };
+    return { content.persistent(), {}, {}, {}, file_name };
 }
 
 app_state put_message(app_state state, string_t str)
@@ -291,6 +291,19 @@ file_buffer paste(file_buffer buf)
         }
     }
 
+    return buf;
+}
+
+file_buffer start_selection(file_buffer buf)
+{
+    auto cur = actual_cursor(buf);
+    buf.start_selection = cur;
+    return buf;
+}
+
+file_buffer clear_selection(file_buffer buf)
+{
+    buf.start_selection = boost::none;
     return buf;
 }
 

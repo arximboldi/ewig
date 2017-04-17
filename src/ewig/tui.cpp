@@ -41,6 +41,11 @@ using buffer_command = std::function<boost::optional<file_buffer>(file_buffer)>;
 using key_bindings = std::unordered_map<wchar_t, std::string>;
 using commands = std::unordered_map<std::string, buffer_command>;
 
+enum color {
+    message_color = 1,
+    selection_color,
+};
+
 const auto global_commands = commands{
     {"move-beginning-of-line", move_line_start},
     {"move-end-of-line", move_line_end},
@@ -48,13 +53,14 @@ const auto global_commands = commands{
     {"new-line", insert_new_line},
     {"kill-line", delete_rest},
     {"paste", paste},
+    {"start-selection", start_selection},
     {"quit", [] (auto) { return boost::none; }}
 };
 
 wchar_t ctrl(wchar_t ch)
 {
-    assert(ch >= 'A' && ch <= '_');
-    return ch - 'A' + 1;
+    assert(ch >= '@' && ch <= '_');
+    return ch - '@';
 }
 
 const auto key_bindings_emacs = key_bindings{
@@ -65,9 +71,13 @@ const auto key_bindings_emacs = key_bindings{
     {ctrl('J'), "new-line"}, // enter
     {ctrl('K'), "kill-line"},
     {ctrl('Y'), "paste"},
+    {ctrl('@'), "start-selection"}, // ctrl-space
     {ctrl('['), "quit"} // esc
 };
 
+// Fills the string `str` with the display contents of the line `ln`
+// between the display columns `first_col` and `first_col + num_col`.
+// It takes into account tabs, expanding them correctly.
 void display_line_fill(const line& ln, int first_col, int num_col,
                        std::wstring& str)
 {
@@ -90,20 +100,66 @@ void display_line_fill(const line& ln, int first_col, int num_col,
     }
 }
 
-void draw_text(const text& t, coord scroll, coord size)
+void draw_text(file_buffer buf, coord size)
 {
     using namespace std;
     attrset(A_NORMAL);
     int col, row;
     getyx(stdscr, col, row);
     auto str      = std::wstring{};
-    auto first_ln = begin(t) + min(scroll.row, (index)t.size());
-    auto last_ln  = begin(t) + min(size.row + scroll.row, (index)t.size());
+    auto first_ln = begin(buf.content) +
+        min(buf.scroll.row, (index)buf.content.size());
+    auto last_ln  = begin(buf.content) +
+        min(size.row + buf.scroll.row, (index)buf.content.size());
+
+    coord starts, ends;
+    auto cursor = actual_cursor(buf);
+    auto has_selection = bool(buf.start_selection);
+    if (has_selection) {
+        starts = std::min(cursor, *buf.start_selection);
+        ends   = std::max(cursor, *buf.start_selection);
+        starts.col = starts.row < (index)buf.content.size()
+                   ? display_line_col(buf.content[starts.row], starts.col) : 0;
+        ends.col   = ends.row < (index)buf.content.size()
+                   ? display_line_col(buf.content[ends.row], ends.col) : 0;
+        starts.row -= buf.scroll.row;
+        ends.row   -= buf.scroll.row;
+    }
+
     immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
-        display_line_fill(ln, scroll.col + col, size.col, str);
-        move(row++, col);
-        addwstr(str.c_str());
+        display_line_fill(ln, buf.scroll.col + col, size.col, str);
+        move(row, col);
+        if (has_selection) {
+            if (starts.row == ends.row && starts.row == row) {
+                addnwstr(str.c_str(), starts.col);
+                attron(COLOR_PAIR(selection_color));
+                addnwstr(str.c_str() + starts.col, ends.col - starts.col);
+                attroff(COLOR_PAIR(selection_color));
+                addnwstr(str.c_str() + ends.col, str.size() - ends.col);
+            } else if (starts.row == row) {
+                addnwstr(str.c_str(), starts.col);
+                attron(COLOR_PAIR(selection_color));
+                addnwstr(str.c_str() + starts.col, str.size() - starts.col);
+                hline(' ', size.col);
+                attroff(COLOR_PAIR(selection_color));
+            } else if (ends.row == row) {
+                attron(COLOR_PAIR(selection_color));
+                addnwstr(str.c_str(), ends.col);
+                attroff(COLOR_PAIR(selection_color));
+                addnwstr(str.c_str() + ends.col, str.size() - ends.col);
+            } else if (starts.row < row && ends.row > row) {
+                attron(COLOR_PAIR(selection_color));
+                addwstr(str.c_str());
+                hline(' ', size.col);
+                attroff(COLOR_PAIR(selection_color));
+            } else {
+                addwstr(str.c_str());
+            }
+        } else {
+            addwstr(str.c_str());
+        }
+        row++;
     });
 }
 
@@ -120,8 +176,10 @@ void draw_mode_line(const file_buffer& buffer, int maxcol)
 void draw_message(const message& msg)
 {
     attrset(A_NORMAL);
+    attron(COLOR_PAIR(message_color));
     addstr("message: ");
     addstr(msg.content.get().c_str());
+    attroff(COLOR_PAIR(message_color));
 }
 
 void draw_text_cursor(const file_buffer& buf, coord window_size)
@@ -143,7 +201,7 @@ void draw(const app_state& app)
 
     move(0, 0);
     auto size = coord{(index)std::max(0, maxrow - 2), (index)maxcol};
-    draw_text(app.buffer.content, app.buffer.scroll, size);
+    draw_text(app.buffer, size);
 
     move(maxrow - 2, 0);
     draw_mode_line(app.buffer, maxcol);
@@ -213,6 +271,7 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
         }
         return put_message(state, "ncurses key pressed: "s + keyname(key));
     } else if (std::iscntrl(key)) {
+        state.buffer = clear_selection(state.buffer);
         auto it = key_bindings_emacs.find(key);
         if (it != key_bindings_emacs.end()) {
             auto it2 = global_commands.find(it->second);
@@ -230,6 +289,7 @@ boost::optional<app_state> handle_key(app_state state, int res, wint_t key)
     } else if (key == KEY_RESIZE) {
         return put_message(state, "terminal resized");
     } else {
+        state.buffer = clear_selection(state.buffer);
         state.buffer = scroll_to_cursor(insert_char(state.buffer, key),
                                         window_size);
         return put_message(state, "adding character: "s + key_name(key));
@@ -248,6 +308,8 @@ tui::tui(const char* file_name)
     keypad(stdscr, true);
     start_color();
     use_default_colors();
+    init_pair(message_color,   COLOR_YELLOW, -1);
+    init_pair(selection_color, COLOR_BLACK, COLOR_YELLOW);
     draw(state);
 }
 
