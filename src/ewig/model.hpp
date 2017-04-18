@@ -67,6 +67,8 @@ struct app_state
     immer::vector<message> messages;
 };
 
+using command = std::function<boost::optional<app_state>(app_state, coord)>;
+
 constexpr auto tab_width = 8;
 
 file_buffer load_file(const char* file_name);
@@ -96,6 +98,7 @@ file_buffer delete_char_right(file_buffer buf);
 file_buffer delete_rest(file_buffer buf);
 
 file_buffer insert_new_line(file_buffer buf);
+file_buffer insert_tab(file_buffer buf);
 file_buffer insert_char(file_buffer buf, wchar_t value);
 
 file_buffer paste(file_buffer buf);
@@ -103,4 +106,23 @@ file_buffer paste(file_buffer buf);
 file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
 std::tuple<coord, coord> selected_region(file_buffer buf);
+
+template <typename Fn>
+command edit_command(Fn fn)
+{
+    return [=] (app_state state, coord wsize) {
+        state.buffer = scroll_to_cursor(fn(state.buffer), wsize);
+        return state;
+    };
+}
+
+template <typename Fn>
+command scroll_command(Fn fn)
+{
+    return [=] (app_state state, coord wsize) {
+        state.buffer = fn(state.buffer, wsize);
+        return state;
+    };
+}
+
 } // namespace ewig

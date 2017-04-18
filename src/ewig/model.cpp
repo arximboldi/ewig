@@ -199,6 +199,11 @@ file_buffer insert_new_line(file_buffer buf)
     }
 }
 
+file_buffer insert_tab(file_buffer buf)
+{
+    return insert_char(buf, '\t');
+}
+
 file_buffer insert_char(file_buffer buf, wchar_t value)
 {
     auto cur = actual_cursor(buf);

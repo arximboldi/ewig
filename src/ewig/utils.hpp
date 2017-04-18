@@ -20,19 +20,28 @@
 
 #pragma once
 
-#include <ewig/model.hpp>
-#include <ewig/keys.hpp>
+#include <boost/fusion/adapted/std_tuple.hpp>
+#include <boost/functional/hash.hpp>
 
-namespace ewig {
-
-struct tui
+namespace std
 {
-    app_state state;
 
-    tui(const char* file_name);
-    ~tui();
-
-    int run();
+template <typename... T>
+struct hash<tuple<T...>>
+{
+    size_t operator()(const tuple<T...>& arg) const noexcept
+    {
+        return boost::hash_value(arg);
+    }
 };
 
-} // namespace ewig
+template <typename... T>
+struct hash<vector<T...>>
+{
+    size_t operator()(const vector<T...>& arg) const noexcept
+    {
+        return boost::hash_range(arg.begin(), arg.end()) ;
+    }
+};
+
+} //namespace std
