@@ -113,15 +113,9 @@ void draw_text(file_buffer buf, coord size)
         min(size.row + buf.scroll.row, (index)buf.content.size());
 
     coord starts, ends;
-    auto cursor = actual_cursor(buf);
     auto has_selection = bool(buf.start_selection);
     if (has_selection) {
-        starts = std::min(cursor, *buf.start_selection);
-        ends   = std::max(cursor, *buf.start_selection);
-        starts.col = starts.row < (index)buf.content.size()
-                   ? display_line_col(buf.content[starts.row], starts.col) : 0;
-        ends.col   = ends.row < (index)buf.content.size()
-                   ? display_line_col(buf.content[ends.row], ends.col) : 0;
+        std::tie(starts, ends) = selected_region(buf);
         starts.row -= buf.scroll.row;
         ends.row   -= buf.scroll.row;
     }

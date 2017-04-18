@@ -102,4 +102,5 @@ file_buffer paste(file_buffer buf);
 
 file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
+std::tuple<coord, coord> selected_region(file_buffer buf);
 } // namespace ewig
