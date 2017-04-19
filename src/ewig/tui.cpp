@@ -31,7 +31,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <functional>
 
 using namespace std::placeholders;
@@ -41,50 +40,10 @@ namespace ewig {
 
 namespace {
 
-using key_map  = std::unordered_map<key_seq, std::string>;
-using commands = std::unordered_map<std::string, command>;
-
 enum color
 {
     message_color = 1,
     selection_color,
-};
-
-key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args)
-{
-    auto map = key_map{};
-    for (auto item : args) {
-        auto kseq = key_seq{};
-        for (auto kcode : item.first) {
-            if (!map[kseq].empty())
-                throw std::runtime_error{"ambiguous bindings"};
-            kseq.push_back(kcode);
-        }
-        auto res = map.emplace(std::move(kseq), std::move(item.second));
-        if (!res.second)
-            throw std::runtime_error{"dupplicate binding"};
-    }
-    return map;
-}
-
-const auto global_commands = commands
-{
-    {"delete-char",            edit_command(delete_char)},
-    {"delete-char-right",      edit_command(delete_char_right)},
-    {"insert-tab",             edit_command(insert_tab)},
-    {"kill-line",              edit_command(delete_rest)},
-    {"move-beginning-of-line", edit_command(move_line_start)},
-    {"move-down",              edit_command(move_cursor_down)},
-    {"move-end-of-line",       edit_command(move_line_end)},
-    {"move-left",              edit_command(move_cursor_left)},
-    {"move-right",             edit_command(move_cursor_right)},
-    {"move-up",                edit_command(move_cursor_up)},
-    {"new-line",               edit_command(insert_new_line)},
-    {"page-down",              scroll_command(page_down)},
-    {"page-up",                scroll_command(page_up)},
-    {"paste",                  edit_command(paste)},
-    {"quit",                   [](auto, auto) { return boost::none; }},
-    {"start-selection",        edit_command(start_selection)},
 };
 
 const auto key_map_emacs = make_key_map(
@@ -248,26 +207,6 @@ void draw(const app_state& app)
     refresh();
 }
 
-boost::optional<app_state>
-eval_command(app_state state, const std::string& cmd)
-{
-    auto it = global_commands.find(cmd);
-    if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd),
-                          get_editor_size());
-    } else {
-        return put_message(state, "unknown_command: "s + cmd);
-    }
-}
-
-app_state eval_insert_char(app_state state, wchar_t key)
-{
-    state.buffer = scroll_to_cursor(
-        insert_char(clear_selection(state.buffer), key),
-        get_editor_size());
-    return state;
-}
-
 class key_handler
 {
     key_map map_;
@@ -286,7 +225,7 @@ public:
         if (it != map_.end()) {
             if (!it->second.empty()) {
                 seq_.clear();
-                return eval_command(state, it->second);
+                return eval_command(state, it->second, get_editor_size());
             } else {
                 return state;
             }
@@ -295,7 +234,7 @@ public:
             seq_.clear();
             if (is_single_char && res == OK && !std::iscntrl(key)) {
                 state = put_message(state, "adding character: "s + key_name(key));
-                return eval_insert_char(state, key);
+                return eval_insert_char(state, key, get_editor_size());
             } else {
                 return put_message(state, "unbound key sequence");
             }

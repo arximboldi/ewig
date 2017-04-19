@@ -32,6 +32,12 @@ namespace ewig {
 
 using key_code = std::tuple<int, wint_t>;
 using key_seq  = std::vector<key_code>;
+using key_map  = std::unordered_map<key_seq, std::string>;
+
+// Builds a keymap from `args`.  It also associates all key sequence
+// prefixes to the empty string, and checks for ambiguous key
+// command sequences.
+key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args);
 
 namespace key {
 

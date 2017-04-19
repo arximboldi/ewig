@@ -28,8 +28,53 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
+
+using namespace std::string_literals;
 
 namespace ewig {
+
+using commands = std::unordered_map<std::string, command>;
+
+static const auto global_commands = commands
+{
+    {"delete-char",            edit_command(delete_char)},
+    {"delete-char-right",      edit_command(delete_char_right)},
+    {"insert-tab",             edit_command(insert_tab)},
+    {"kill-line",              edit_command(delete_rest)},
+    {"move-beginning-of-line", edit_command(move_line_start)},
+    {"move-down",              edit_command(move_cursor_down)},
+    {"move-end-of-line",       edit_command(move_line_end)},
+    {"move-left",              edit_command(move_cursor_left)},
+    {"move-right",             edit_command(move_cursor_right)},
+    {"move-up",                edit_command(move_cursor_up)},
+    {"new-line",               edit_command(insert_new_line)},
+    {"page-down",              scroll_command(page_down)},
+    {"page-up",                scroll_command(page_up)},
+    {"paste",                  edit_command(paste)},
+    {"quit",                   [](auto, auto) { return boost::none; }},
+    {"start-selection",        edit_command(start_selection)},
+};
+
+boost::optional<app_state>
+eval_command(app_state state, const std::string& cmd, coord editor_size)
+{
+    auto it = global_commands.find(cmd);
+    if (it != global_commands.end()) {
+        return it->second(put_message(state, "calling command: "s + cmd),
+                          editor_size);
+    } else {
+        return put_message(state, "unknown_command: "s + cmd);
+    }
+}
+
+app_state eval_insert_char(app_state state, wchar_t key, coord editor_size)
+{
+    state.buffer = scroll_to_cursor(
+        insert_char(clear_selection(state.buffer), key),
+        editor_size);
+    return state;
+}
 
 file_buffer load_file(const char* file_name)
 {

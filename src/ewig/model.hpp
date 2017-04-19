@@ -107,6 +107,11 @@ file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
 std::tuple<coord, coord> selected_region(file_buffer buf);
 
+boost::optional<app_state>
+eval_command(app_state state, const std::string& cmd, coord editor_size);
+app_state
+eval_insert_char(app_state state, wchar_t key, coord editor_size);
+
 template <typename Fn>
 command edit_command(Fn fn)
 {
