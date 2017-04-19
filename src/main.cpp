@@ -18,9 +18,9 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include <ewig/main.hpp>
+#include <ewig/tui.hpp>
 
 int main(int argc, char* argv[])
 {
-    return ewig::run(argc, argv);
+    return ewig::main(argc, argv);
 }
