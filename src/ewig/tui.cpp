@@ -248,7 +248,6 @@ void draw(const app_state& app)
     refresh();
 }
 
-
 boost::optional<app_state>
 eval_command(app_state state, const std::string& cmd)
 {
@@ -292,10 +291,11 @@ public:
                 return state;
             }
         } else {
+            auto is_single_char = seq_.size() == 1;
             seq_.clear();
-            if (res == OK && !std::iscntrl(key)) {
+            if (is_single_char && res == OK && !std::iscntrl(key)) {
+                state = put_message(state, "adding character: "s + key_name(key));
                 return eval_insert_char(state, key);
-                return put_message(state, "adding character: "s + key_name(key));
             } else {
                 return put_message(state, "unbound key sequence");
             }
