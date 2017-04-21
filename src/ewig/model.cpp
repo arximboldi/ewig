@@ -84,8 +84,8 @@ file_buffer load_file(const char* file_name)
     auto ln = std::wstring{};
     while (std::getline(file, ln))
         content.push_back({begin(ln), end(ln)});
-
-    return { content.persistent(), {}, {}, {}, file_name };
+    auto result = content.persistent();
+    return { result, {}, {}, {}, file_name, result };
 }
 
 app_state put_message(app_state state, string_t str)

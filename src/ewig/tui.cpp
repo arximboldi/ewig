@@ -161,7 +161,9 @@ void draw_text(file_buffer buf, coord size)
 void draw_mode_line(const file_buffer& buffer, int maxcol)
 {
     attrset(A_REVERSE);
-    printw(" %s  (%d, %d)",
+    auto dirty_mark = buffer.content == buffer.file_content ? "--" : "**";
+    printw(" %s %s  (%d, %d)",
+           dirty_mark,
            buffer.file_name.get().c_str(),
            buffer.cursor.col,
            buffer.cursor.row);
