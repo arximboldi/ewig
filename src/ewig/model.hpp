@@ -50,7 +50,7 @@ struct file_buffer
     text content;
     coord cursor;
     coord scroll;
-    boost::optional<coord> start_selection;
+    boost::optional<coord> selection_start;
     string_t file_name;
     immer::vector<text> clipboard;
 };

@@ -114,7 +114,7 @@ void draw_text(file_buffer buf, coord size)
         min(size.row + buf.scroll.row, (index)buf.content.size());
 
     coord starts, ends;
-    auto has_selection = bool(buf.start_selection);
+    auto has_selection = bool(buf.selection_start);
     if (has_selection) {
         std::tie(starts, ends) = selected_region(buf);
         starts.row -= buf.scroll.row;

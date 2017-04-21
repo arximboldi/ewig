@@ -347,21 +347,21 @@ file_buffer paste(file_buffer buf)
 file_buffer start_selection(file_buffer buf)
 {
     auto cur = actual_cursor(buf);
-    buf.start_selection = cur;
+    buf.selection_start = cur;
     return buf;
 }
 
 file_buffer clear_selection(file_buffer buf)
 {
-    buf.start_selection = boost::none;
+    buf.selection_start = boost::none;
     return buf;
 }
 
 std::tuple<coord, coord> selected_region(file_buffer buf)
 {
     auto cursor = actual_cursor(buf);
-    auto starts = std::min(cursor, *buf.start_selection);
-    auto ends   = std::max(cursor, *buf.start_selection);
+    auto starts = std::min(cursor, *buf.selection_start);
+    auto ends   = std::max(cursor, *buf.selection_start);
     starts.col = starts.row < (index)buf.content.size()
                ? display_line_col(buf.content[starts.row], starts.col) : 0;
     ends.col   = ends.row < (index)buf.content.size()
