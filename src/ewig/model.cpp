@@ -42,6 +42,7 @@ static const auto global_commands = commands
     {"delete-char-right",      edit_command(delete_char_right)},
     {"insert-tab",             edit_command(insert_tab)},
     {"kill-line",              edit_command(delete_rest)},
+    {"copy",                   edit_command(copy)},
     {"move-beginning-of-line", edit_command(move_line_start)},
     {"move-down",              edit_command(move_cursor_down)},
     {"move-end-of-line",       edit_command(move_line_end)},
@@ -339,10 +340,41 @@ file_buffer paste(file_buffer buf)
         } else {
             buf.content = buf.content + to_copy;
         }
+        buf.cursor.row = cur.row + to_copy.size() - 1;
+        buf.cursor.col = to_copy.size() > 1
+            ? to_copy.back().size()
+            : cur.col + to_copy.back().size();
     }
 
     return buf;
 }
+
+
+file_buffer copy(file_buffer buf)
+{
+    coord starts, ends;
+    std::tie(starts, ends) = selected_region(buf);
+    if (starts != ends) {
+        buf.clipboard = buf.clipboard.push_back(
+            (ends.row == (index)buf.content.size()
+             ? buf.content.push_back({}) // actually add the imaginary
+                                         // line if the selection ends
+                                         // there
+             : buf.content)
+               .take(ends.row+1)
+               .drop(starts.row)
+               .update(ends.row-starts.row, [&] (auto l) {
+                   return l.take(ends.col);
+               })
+               .update(0, [&] (auto l) {
+                   return l.drop(starts.col);
+               }));
+    }
+
+    buf.selection_start = boost::none;
+    return buf;
+}
+
 
 file_buffer start_selection(file_buffer buf)
 {

@@ -41,6 +41,9 @@ struct coord
 
     bool operator<(const coord& other) const
     { return row < other.row || (row == other.row && col < other.col); }
+
+    bool operator!=(const coord& other) const
+    { return row != other.row || col != other.col; }
 };
 
 using string_t = immer::box<std::string>;
@@ -103,6 +106,7 @@ file_buffer insert_tab(file_buffer buf);
 file_buffer insert_char(file_buffer buf, wchar_t value);
 
 file_buffer paste(file_buffer buf);
+file_buffer copy(file_buffer buf);
 
 file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
