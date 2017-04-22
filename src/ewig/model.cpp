@@ -45,6 +45,8 @@ static const auto global_commands = commands
     {"copy",                   edit_command(copy)},
     {"cut",                    edit_command(cut)},
     {"move-beginning-of-line", edit_command(move_line_start)},
+    {"move-beginning-buffer",  edit_command(move_buffer_start)},
+    {"move-end-buffer",        edit_command(move_buffer_end)},
     {"move-down",              edit_command(move_cursor_down)},
     {"move-end-of-line",       edit_command(move_line_end)},
     {"move-left",              edit_command(move_cursor_left)},
@@ -179,6 +181,18 @@ file_buffer move_line_end(file_buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size())
         buf.cursor.col = buf.content[buf.cursor.row].size();
+    return buf;
+}
+
+file_buffer move_buffer_start(file_buffer buf)
+{
+    buf.cursor = {0,0};
+    return buf;
+}
+
+file_buffer move_buffer_end(file_buffer buf)
+{
+    buf.cursor = {(index)buf.content.size(),0};
     return buf;
 }
 

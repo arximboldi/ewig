@@ -89,6 +89,8 @@ file_buffer page_down(file_buffer buf, coord size);
 
 file_buffer move_line_start(file_buffer buf);
 file_buffer move_line_end(file_buffer buf);
+file_buffer move_buffer_start(file_buffer buf);
+file_buffer move_buffer_end(file_buffer buf);
 
 file_buffer move_cursor_up(file_buffer buf);
 file_buffer move_cursor_down(file_buffer buf);
