@@ -43,7 +43,7 @@ static const auto global_commands = commands
     {"insert-tab",             edit_command(insert_tab)},
     {"kill-line",              edit_command(delete_rest)},
     {"copy",                   edit_command(copy)},
-    {"cut",                   edit_command(cut)},
+    {"cut",                    edit_command(cut)},
     {"move-beginning-of-line", edit_command(move_line_start)},
     {"move-down",              edit_command(move_cursor_down)},
     {"move-end-of-line",       edit_command(move_line_end)},
@@ -56,6 +56,7 @@ static const auto global_commands = commands
     {"paste",                  edit_command(paste)},
     {"quit",                   [](auto, auto) { return boost::none; }},
     {"start-selection",        edit_command(start_selection)},
+    {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
 boost::optional<app_state>
@@ -415,6 +416,13 @@ file_buffer start_selection(file_buffer buf)
 {
     auto cur = actual_cursor(buf);
     buf.selection_start = cur;
+    return buf;
+}
+
+file_buffer select_whole_buffer(file_buffer buf)
+{
+    buf.cursor = {0, 0};
+    buf.selection_start = {(index)buf.content.size(), (index)buf.content.back().size()};
     return buf;
 }
 

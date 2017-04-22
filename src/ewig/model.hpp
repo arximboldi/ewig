@@ -109,6 +109,7 @@ file_buffer paste(file_buffer buf);
 file_buffer copy(file_buffer buf);
 file_buffer cut(file_buffer buf);
 
+file_buffer select_whole_buffer(file_buffer buf);
 file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
 std::tuple<coord, coord> selected_region(file_buffer buf);
