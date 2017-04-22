@@ -63,6 +63,7 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::ctrl('I')), "insert-tab"}, // tab
     {key::seq(key::ctrl('J')), "new-line"}, // enter
     {key::seq(key::ctrl('K')), "kill-line"},
+    {key::seq(key::ctrl('W')), "cut"},
     {key::seq(key::ctrl('Y')), "paste"},
     {key::seq(key::ctrl('@')), "start-selection"}, // ctrl-space
     {key::seq(key::ctrl('X'), key::ctrl('C')), "quit"},

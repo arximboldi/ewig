@@ -43,6 +43,7 @@ static const auto global_commands = commands
     {"insert-tab",             edit_command(insert_tab)},
     {"kill-line",              edit_command(delete_rest)},
     {"copy",                   edit_command(copy)},
+    {"cut",                   edit_command(cut)},
     {"move-beginning-of-line", edit_command(move_line_start)},
     {"move-down",              edit_command(move_cursor_down)},
     {"move-end-of-line",       edit_command(move_line_end)},
@@ -349,18 +350,15 @@ file_buffer paste(file_buffer buf)
     return buf;
 }
 
-
-file_buffer copy(file_buffer buf)
+text selected_text(file_buffer buf)
 {
     coord starts, ends;
     std::tie(starts, ends) = selected_region(buf);
-    if (starts != ends) {
-        buf.clipboard = buf.clipboard.push_back(
-            (ends.row == (index)buf.content.size()
-             ? buf.content.push_back({}) // actually add the imaginary
-                                         // line if the selection ends
-                                         // there
-             : buf.content)
+    return (ends.row == (index)buf.content.size()
+            ? buf.content.push_back({}) // actually add the imaginary
+                                        // line if the selection ends
+                                        // there
+            : buf.content)
                .take(ends.row+1)
                .drop(starts.row)
                .update(ends.row-starts.row, [&] (auto l) {
@@ -368,13 +366,50 @@ file_buffer copy(file_buffer buf)
                })
                .update(0, [&] (auto l) {
                    return l.drop(starts.col);
-               }));
+               });
+}
+
+file_buffer cut(file_buffer buf)
+{
+    buf.clipboard = buf.clipboard.push_back(selected_text(buf));
+    coord starts, ends;
+    std::tie(starts, ends) = selected_region(buf);
+    if (starts != ends) {
+        if (starts.row != ends.row) {
+            auto content =
+                ends.row == (index)buf.content.size()
+                ? buf.content.push_back({}) // add the imaginary line
+                : buf.content;
+            buf.content = content
+                .take(starts.row+1)
+                .update(starts.row, [&] (auto l) {
+                    return l.take(starts.col) + content[ends.row].drop(ends.col);
+                })
+              + buf.content
+                .drop(ends.row+1);
+        } else {
+            buf.content = buf.content.update(starts.row, [&] (auto l) {
+                return l.take(starts.col) + l.drop(ends.col);
+            });
+        }
+
+        buf.cursor = starts;
     }
 
     buf.selection_start = boost::none;
     return buf;
 }
 
+file_buffer copy(file_buffer buf)
+{
+    coord starts, ends;
+    std::tie(starts, ends) = selected_region(buf);
+    if (starts != ends) {
+        buf.clipboard = buf.clipboard.push_back(selected_text(buf));
+    }
+    buf.selection_start = boost::none;
+    return buf;
+}
 
 file_buffer start_selection(file_buffer buf)
 {
