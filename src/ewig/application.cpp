@@ -58,10 +58,10 @@ application save(application state, coord)
 {
     if (is_dirty(state.current)) {
         state.current = save_buffer(state.current);
-        return put_message(state, "File saved: "s +
+        return put_message(state, "file saved: "s +
                            state.current.from.name.get());
     } else {
-        return put_message(state, "Nothing to save");
+        return put_message(state, "nothing to save");
     }
 }
 

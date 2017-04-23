@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
 {
     std::locale::global(std::locale(""));
     if (argc != 2) {
-        std::cerr << "Give me a file name." << std::endl;
+        std::cerr << "give me a file name" << std::endl;
         return 1;
     }
 
