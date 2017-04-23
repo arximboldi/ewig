@@ -46,15 +46,13 @@ struct coord
     { return row != other.row || col != other.col; }
 };
 
-using string_t = immer::box<std::string>;
-
 struct file_buffer
 {
     text content;
     coord cursor;
     coord scroll;
     boost::optional<coord> selection_start;
-    string_t file_name;
+    immer::box<std::string> file_name;
     text file_content;
     immer::vector<text> clipboard;
 };
@@ -62,7 +60,7 @@ struct file_buffer
 struct message
 {
     std::time_t time_stamp;
-    string_t content;
+    immer::box<std::string> content;
 };
 
 struct application
@@ -77,7 +75,7 @@ constexpr auto tab_width = 8;
 
 file_buffer load_file(const char* file_name);
 
-application put_message(application state, string_t str);
+application put_message(application state, std::string str);
 
 coord actual_cursor(file_buffer buf);
 coord actual_display_cursor(const file_buffer& buf);

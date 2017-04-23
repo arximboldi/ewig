@@ -93,10 +93,10 @@ file_buffer load_file(const char* file_name)
     return { result, {}, {}, {}, file_name, result };
 }
 
-application put_message(application state, string_t str)
+application put_message(application state, std::string str)
 {
     state.messages = std::move(state.messages)
-        .push_back({std::time(nullptr), str});
+        .push_back({std::time(nullptr), std::move(str)});
     return state;
 }
 
