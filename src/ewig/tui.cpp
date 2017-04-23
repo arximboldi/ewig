@@ -86,21 +86,21 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::backspace), "delete-char"},
     {key::seq(key::delete_),   "delete-char-right"},
     {key::seq(key::home),      "move-beginning-of-line"},
-    {key::seq(key::ctrl('A')), "move-beginning-of-line"},
+    {key::seq(key::ctrl('a')), "move-beginning-of-line"},
     {key::seq(key::end),       "move-end-of-line"},
-    {key::seq(key::ctrl('E')), "move-end-of-line"},
-    {key::seq(key::ctrl('I')), "insert-tab"}, // tab
-    {key::seq(key::ctrl('J')), "new-line"}, // enter
-    {key::seq(key::ctrl('K')), "kill-line"},
-    {key::seq(key::ctrl('W')), "cut"},
-    {key::seq(key::ctrl('Y')), "paste"},
+    {key::seq(key::ctrl('e')), "move-end-of-line"},
+    {key::seq(key::ctrl('i')), "insert-tab"}, // tab
+    {key::seq(key::ctrl('j')), "new-line"}, // enter
+    {key::seq(key::ctrl('k')), "kill-line"},
+    {key::seq(key::ctrl('w')), "cut"},
+    {key::seq(key::ctrl('y')), "paste"},
     {key::seq(key::ctrl('@')), "start-selection"}, // ctrl-space
     {key::seq(key::ctrl('_')), "undo"},
-    {key::seq(key::ctrl('X'), key::ctrl('C')), "quit"},
-    {key::seq(key::ctrl('X'), key::ctrl('S')), "save"},
-    {key::seq(key::ctrl('X'), 'h'), "select-whole-buffer"},
-    {key::seq(key::ctrl('X'), '['), "move-beginning-buffer"},
-    {key::seq(key::ctrl('X'), ']'), "move-end-buffer"},
+    {key::seq(key::ctrl('x'), key::ctrl('C')), "quit"},
+    {key::seq(key::ctrl('x'), key::ctrl('S')), "save"},
+    {key::seq(key::ctrl('x'), 'h'), "select-whole-buffer"},
+    {key::seq(key::ctrl('x'), '['), "move-beginning-buffer"},
+    {key::seq(key::ctrl('x'), ']'), "move-end-buffer"},
     {key::seq(key::alt('w')),  "copy"},
 });
 

@@ -71,6 +71,8 @@ key_seq seq(special key)
 
 key_seq ctrl(char ch)
 {
+    if (ch >= 'a' && ch <= 'z')
+        ch = (ch - 'a') + 'A';
     if (ch < '@' || ch > '_')
         throw std::runtime_error{"bad control key: "s + ch};
     return {{OK, ch - '@'}};
