@@ -22,7 +22,10 @@
 
 #include <ewig/utils.hpp>
 
+extern "C" {
 #include <ncursesw/ncurses.h>
+}
+
 
 #include <tuple>
 #include <unordered_map>

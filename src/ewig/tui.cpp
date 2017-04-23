@@ -25,7 +25,9 @@
 #include <immer/algorithm.hpp>
 #include <boost/optional.hpp>
 
+extern "C" {
 #include <ncursesw/ncurses.h>
+}
 
 #include <algorithm>
 #include <fstream>
