@@ -20,6 +20,7 @@
 
 #include "ewig/tui.hpp"
 #include "ewig/keys.hpp"
+#include "ewig/model.hpp"
 
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
@@ -40,13 +41,36 @@ using namespace std::string_literals;
 
 namespace ewig {
 
-namespace {
-
-enum color
+tui::tui()
+    : win_{initscr()}
 {
-    message_color = 1,
-    selection_color,
-};
+    if (win_.get() != stdscr)
+        throw std::runtime_error{"error while initializing ncurses"};
+
+    raw();
+    noecho();
+    keypad(stdscr, true);
+
+    start_color();
+    use_default_colors();
+    init_pair((int)color::message,   COLOR_YELLOW, -1);
+    init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
+}
+
+key_code tui::read_key()
+{
+    auto key = wint_t{};
+    auto res = get_wch(&key);
+    return {res, key};
+}
+
+void tui::cleanup_fn::operator() (WINDOW* win) const
+{
+    if (win)
+        endwin();
+}
+
+namespace {
 
 const auto key_map_emacs = make_key_map(
 {
@@ -135,26 +159,26 @@ void draw_text(file_buffer buf, coord size)
         if (has_selection) {
             if (starts.row == ends.row && starts.row == row) {
                 addnwstr(str.c_str(), starts.col);
-                attron(COLOR_PAIR(selection_color));
+                attron(COLOR_PAIR(color::selection));
                 addnwstr(str.c_str() + starts.col, ends.col - starts.col);
-                attroff(COLOR_PAIR(selection_color));
+                attroff(COLOR_PAIR(color::selection));
                 addnwstr(str.c_str() + ends.col, str.size() - ends.col);
             } else if (starts.row == row) {
                 addnwstr(str.c_str(), starts.col);
-                attron(COLOR_PAIR(selection_color));
+                attron(COLOR_PAIR(color::selection));
                 addnwstr(str.c_str() + starts.col, str.size() - starts.col);
                 hline(' ', size.col);
-                attroff(COLOR_PAIR(selection_color));
+                attroff(COLOR_PAIR(color::selection));
             } else if (ends.row == row) {
-                attron(COLOR_PAIR(selection_color));
+                attron(COLOR_PAIR(color::selection));
                 addnwstr(str.c_str(), ends.col);
-                attroff(COLOR_PAIR(selection_color));
+                attroff(COLOR_PAIR(color::selection));
                 addnwstr(str.c_str() + ends.col, str.size() - ends.col);
             } else if (starts.row < row && ends.row > row) {
-                attron(COLOR_PAIR(selection_color));
+                attron(COLOR_PAIR(color::selection));
                 addwstr(str.c_str());
                 hline(' ', size.col);
-                attroff(COLOR_PAIR(selection_color));
+                attroff(COLOR_PAIR(color::selection));
             } else {
                 addwstr(str.c_str());
             }
@@ -180,10 +204,10 @@ void draw_mode_line(const file_buffer& buffer, int maxcol)
 void draw_message(const message& msg)
 {
     attrset(A_NORMAL);
-    attron(COLOR_PAIR(message_color));
+    attron(COLOR_PAIR(color::message));
     addstr("message: ");
     addstr(msg.content.get().c_str());
-    attroff(COLOR_PAIR(message_color));
+    attroff(COLOR_PAIR(color::message));
 }
 
 void draw_text_cursor(const file_buffer& buf, coord window_size)
@@ -251,39 +275,13 @@ public:
     }
 };
 
+boost::optional<application> handle_key(application state, key_code key)
+{
+    static auto handler = key_handler{key_map_emacs};
+    return handler.handle_key(state, std::get<0>(key), std::get<1>(key));
+}
+
 } // anonymous namespace
-
-tui::tui(const char* file_name)
-    : state{load_file(file_name)}
-{
-    initscr();
-    raw();
-    noecho();
-    keypad(stdscr, true);
-    start_color();
-    use_default_colors();
-    init_pair(message_color,   COLOR_YELLOW, -1);
-    init_pair(selection_color, COLOR_BLACK, COLOR_YELLOW);
-    draw(state);
-}
-
-tui::~tui()
-{
-    endwin();
-}
-
-int tui::run()
-{
-    auto input = key_handler{key_map_emacs};
-    auto key = wint_t{};
-    auto res = get_wch(&key);
-    while (auto new_state = input.handle_key(state, res, key)) {
-        state = *new_state;
-        draw(state);
-        res = get_wch(&key);
-    }
-    return 0;
-}
 
 int main(int argc, char* argv[])
 {
@@ -294,8 +292,14 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    tui editor{argv[1]};
-    editor.run();
+    auto state = application{load_file(argv[1])};
+    auto ui = tui{};
+    draw(state);
+
+    while (auto new_state = handle_key(state, ui.read_key())) {
+        state = *new_state;
+        draw(state);
+    }
 
     return 0;
 }

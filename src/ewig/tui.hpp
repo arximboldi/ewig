@@ -20,19 +20,29 @@
 
 #pragma once
 
-#include <ewig/model.hpp>
 #include <ewig/keys.hpp>
 
 namespace ewig {
 
+enum class color
+{
+    message = 1,
+    selection,
+};
+
 struct tui
 {
-    application state;
+    tui();
 
-    tui(const char* file_name);
-    ~tui();
+    key_code read_key();
 
-    int run();
+private:
+    struct cleanup_fn
+    {
+        void operator() (WINDOW* win) const;
+    };
+
+    std::unique_ptr<WINDOW, cleanup_fn> win_;
 };
 
 int main(int argc, char* argv[]);
