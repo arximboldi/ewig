@@ -28,6 +28,7 @@ using commands = std::unordered_map<std::string, command>;
 
 static const auto global_commands = commands
 {
+    {"insert",                 key_command(insert_char)},
     {"delete-char",            edit_command(delete_char)},
     {"delete-char-right",      edit_command(delete_char_right)},
     {"insert-tab",             edit_command(insert_tab)},
@@ -85,15 +86,16 @@ boost::optional<application> handle_key(application state, key_code key, coord s
     const auto& map = state.keys.get();
     auto it = map.find(state.input);
     if (it != map.end()) {
-        if (!it->second.empty())
-            return optional_map(eval_command(state, it->second, size),
-                                clear_input);
-    } else if (key::ctrl('[') != key_seq{key}) {
+        if (!it->second.empty()) {
+            auto result = eval_command(state, it->second, size);
+            return optional_map(result, clear_input);
+        }
+    } else if (key_seq{key} != key::ctrl('[')) {
         using std::get;
         auto is_single_char = state.input.size() == 1;
         if (is_single_char && get<0>(key) == OK && !std::iscntrl(get<1>(key))) {
-            state = put_message(state, "adding character: "s + key_name(get<1>(key)));
-            return clear_input(eval_insert_char(state, get<1>(key), editor_size(size)));
+            auto result = eval_command(state, "insert", size);
+            return optional_map(result, clear_input);
         } else {
             return clear_input(put_message(state, "unbound key sequence"));
         }
@@ -102,23 +104,14 @@ boost::optional<application> handle_key(application state, key_code key, coord s
 }
 
 boost::optional<application>
-eval_command(application state, const std::string& cmd, coord editor_size)
+eval_command(application state, const std::string& cmd, coord size)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd),
-                          editor_size);
+        return it->second(put_message(state, "calling command: "s + cmd), size);
     } else {
         return put_message(state, "unknown_command: "s + cmd);
     }
-}
-
-application eval_insert_char(application state, wchar_t key, coord editor_size)
-{
-    state.buffer = scroll_to_cursor(
-        insert_char(clear_selection(state.buffer), key),
-        editor_size);
-    return state;
 }
 
 application apply_edit(application state, coord size, buffer edit)

@@ -67,6 +67,15 @@ command edit_command(Fn fn)
 }
 
 template <typename Fn>
+command key_command(Fn fn)
+{
+    return [=] (application state, coord size) {
+        auto key = std::get<1>(state.input.back());
+        return apply_edit(state, size, fn(state.buffer, key));
+    };
+}
+
+template <typename Fn>
 command paste_command(Fn fn)
 {
     return [=] (application state, coord size) {
