@@ -41,7 +41,7 @@ static const auto global_commands = commands
     {"delete-char",            edit_command(delete_char)},
     {"delete-char-right",      edit_command(delete_char_right)},
     {"insert-tab",             edit_command(insert_tab)},
-    {"kill-line",              edit_command(delete_rest)},
+    {"kill-line",              edit_command(cut_rest)},
     {"copy",                   edit_command(copy)},
     {"cut",                    edit_command(cut)},
     {"move-beginning-of-line", edit_command(move_line_start)},
@@ -55,7 +55,7 @@ static const auto global_commands = commands
     {"new-line",               edit_command(insert_new_line)},
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
-    {"paste",                  edit_command(paste)},
+    {"paste",                  paste_command(insert_text)},
     {"quit",                   [](auto, auto) { return boost::none; }},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
@@ -79,7 +79,7 @@ boost::optional<application> handle_key(application state, key_code key, coord s
     auto it = map.find(state.input);
     if (it != map.end()) {
         if (!it->second.empty())
-            return optional_map(eval_command(state, it->second, editor_size(size)),
+            return optional_map(eval_command(state, it->second, size),
                                 clear_input);
     } else if (key::ctrl('[') != key_seq{key}) {
         using std::get;
@@ -352,49 +352,42 @@ file_buffer delete_char_right(file_buffer buf)
     return buf;
 }
 
-file_buffer delete_rest(file_buffer buf)
+std::pair<file_buffer, text> cut_rest(file_buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size()) {
         auto ln = buf.content[buf.cursor.row];
         if (buf.cursor.col < (index)ln.size()) {
             buf.content = buf.content.set(buf.cursor.row, ln.take(buf.cursor.col));
-            buf.clipboard = buf.clipboard.push_back({ln.drop(buf.cursor.col)});
-            return buf;
+            return {buf, {ln.drop(buf.cursor.col)}};
         } else {
             // Delete the end of line to join with previous line
-            buf.clipboard = buf.clipboard.push_back({{}, {}});
-            return delete_char_right(buf);
+            return {delete_char_right(buf), {{}, {}}};
         }
     } else {
-        return buf;
+        return {buf, {}};
     }
 }
 
-file_buffer paste(file_buffer buf)
+file_buffer insert_text(file_buffer buf, text paste)
 {
     auto cur = actual_cursor(buf);
-
-    if (!buf.clipboard.empty()) {
-        auto to_copy = buf.clipboard.back();
-        if (cur.row < (index)buf.content.size()) {
-            auto ln1 = buf.content[cur.row];
-            buf.content = buf.content.set(cur.row,
-                                          ln1.take(cur.col) + to_copy[0]);
-            buf.content = buf.content.take(cur.row + 1)
-                + to_copy.drop(1)
-                + buf.content.drop(cur.row + 1);
-            auto ln2 = buf.content[cur.row + to_copy.size() - 1];
-            buf.content = buf.content.set(cur.row + to_copy.size() - 1,
-                                          ln2 + ln1.drop(cur.col));
-        } else {
-            buf.content = buf.content + to_copy;
-        }
-        buf.cursor.row = cur.row + to_copy.size() - 1;
-        buf.cursor.col = to_copy.size() > 1
-            ? to_copy.back().size()
-            : cur.col + to_copy.back().size();
+    if (cur.row < (index)buf.content.size()) {
+        auto ln1 = buf.content[cur.row];
+        buf.content = buf.content.set(cur.row,
+                                      ln1.take(cur.col) + paste[0]);
+        buf.content = buf.content.take(cur.row + 1)
+            + paste.drop(1)
+            + buf.content.drop(cur.row + 1);
+        auto ln2 = buf.content[cur.row + paste.size() - 1];
+        buf.content = buf.content.set(cur.row + paste.size() - 1,
+                                      ln2 + ln1.drop(cur.col));
+    } else {
+        buf.content = buf.content + paste;
     }
-
+    buf.cursor.row = cur.row + paste.size() - 1;
+    buf.cursor.col = paste.size() > 1
+        ? paste.back().size()
+        : cur.col + paste.back().size();
     return buf;
 }
 
@@ -402,25 +395,28 @@ text selected_text(file_buffer buf)
 {
     coord starts, ends;
     std::tie(starts, ends) = selected_region(buf);
-    return (ends.row == (index)buf.content.size()
-            ? buf.content.push_back({}) // actually add the imaginary
-                                        // line if the selection ends
-                                        // there
-            : buf.content)
-               .take(ends.row+1)
-               .drop(starts.row)
-               .update(ends.row-starts.row, [&] (auto l) {
-                   return l.take(ends.col);
-               })
-               .update(0, [&] (auto l) {
-                   return l.drop(starts.col);
-               });
+    if (starts == ends)
+        return {};
+    else
+        return // actually add the imaginary line if the selection
+               // ends there
+            (ends.row == (index)buf.content.size()
+                ? buf.content.push_back({})
+                : buf.content)
+            .take(ends.row+1)
+            .drop(starts.row)
+            .update(ends.row-starts.row, [&] (auto l) {
+                return l.take(ends.col);
+            })
+            .update(0, [&] (auto l) {
+                return l.drop(starts.col);
+            });
 }
 
-file_buffer cut(file_buffer buf)
+std::pair<file_buffer, text> cut(file_buffer buf)
 {
-    buf.clipboard = buf.clipboard.push_back(selected_text(buf));
-    coord starts, ends;
+    auto selection = selected_text(buf);
+    auto starts = coord{}, ends = coord{};
     std::tie(starts, ends) = selected_region(buf);
     if (starts != ends) {
         if (starts.row != ends.row) {
@@ -445,18 +441,14 @@ file_buffer cut(file_buffer buf)
     }
 
     buf.selection_start = boost::none;
-    return buf;
+    return {buf, selection};
 }
 
-file_buffer copy(file_buffer buf)
+std::pair<file_buffer, text> copy(file_buffer buf)
 {
-    coord starts, ends;
-    std::tie(starts, ends) = selected_region(buf);
-    if (starts != ends) {
-        buf.clipboard = buf.clipboard.push_back(selected_text(buf));
-    }
+    auto result = selected_text(buf);
     buf.selection_start = boost::none;
-    return buf;
+    return {buf, result};
 }
 
 file_buffer start_selection(file_buffer buf)
@@ -489,6 +481,25 @@ std::tuple<coord, coord> selected_region(file_buffer buf)
     ends.col   = ends.row < (index)buf.content.size()
                ? display_line_col(buf.content[ends.row], ends.col) : 0;
     return {starts, ends};
+}
+
+application apply_edit(application state, coord size, file_buffer edit)
+{
+    state.buffer = scroll_to_cursor(edit, editor_size(size));
+    return state;
+}
+
+application apply_edit(application state, coord size, std::pair<file_buffer, text> edit)
+{
+    state.buffer = scroll_to_cursor(edit.first, editor_size(size));
+    return put_clipboard(state, edit.second);
+}
+
+application put_clipboard(application state, text content)
+{
+    if (!content.empty())
+        state.clipboard = state.clipboard.push_back(content);
+    return state;
 }
 
 } // namespace ewig
