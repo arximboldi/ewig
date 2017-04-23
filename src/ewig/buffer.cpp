@@ -413,4 +413,26 @@ std::tuple<coord, coord> selected_region(buffer buf)
     return {starts, ends};
 }
 
+buffer undo(buffer buf)
+{
+    auto idx = buf.history_pos.value_or(buf.history.size());
+    if (idx > 0) {
+        auto restore = buf.history[--idx];
+        buf.content = restore.content;
+        buf.cursor = restore.cursor;
+        buf.history_pos = idx;
+    }
+    return buf;
+}
+
+buffer record(buffer before, buffer after)
+{
+    if (before.content != after.content) {
+        after.history = after.history.push_back({before.content, before.cursor});
+        if (before.history_pos == after.history_pos)
+            after.history_pos = boost::none;
+    }
+    return after;
+}
+
 } // namespace ewig

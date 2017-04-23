@@ -49,6 +49,7 @@ static const auto global_commands = commands
     {"paste",                  paste_command(insert_text)},
     {"quit",                   [](auto, auto) { return boost::none; }},
     {"save",                   save},
+    {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
@@ -128,13 +129,15 @@ eval_command(application state, const std::string& cmd, coord size)
 
 application apply_edit(application state, coord size, buffer edit)
 {
-    state.current = scroll_to_cursor(edit, editor_size(size));
+    state.current = record(state.current,
+                           scroll_to_cursor(edit, editor_size(size)));
     return state;
 }
 
 application apply_edit(application state, coord size, std::pair<buffer, text> edit)
 {
-    state.current = scroll_to_cursor(edit.first, editor_size(size));
+    state.current = record(state.current,
+                           scroll_to_cursor(edit.first, editor_size(size)));
     return put_clipboard(state, edit.second);
 }
 

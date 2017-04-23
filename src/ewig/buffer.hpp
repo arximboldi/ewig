@@ -39,6 +39,12 @@ struct file
     text content;
 };
 
+struct snapshot
+{
+    text content;
+    coord cursor;
+};
+
 struct buffer
 {
     file from;
@@ -46,6 +52,8 @@ struct buffer
     coord cursor;
     coord scroll;
     boost::optional<coord> selection_start;
+    immer::vector<snapshot> history;
+    boost::optional<std::size_t> history_pos;
 };
 
 constexpr auto tab_width = 8;
@@ -93,5 +101,8 @@ buffer select_whole_buffer(buffer buf);
 buffer start_selection(buffer buf);
 buffer clear_selection(buffer buf);
 std::tuple<coord, coord> selected_region(buffer buf);
+
+buffer undo(buffer);
+buffer record(buffer before, buffer after);
 
 } // namespace ewig
