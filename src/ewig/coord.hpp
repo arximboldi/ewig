@@ -28,14 +28,21 @@ struct coord
 {
     index row = {};
     index col = {};
-
-    bool operator<(const coord& other) const
-    { return row < other.row || (row == other.row && col < other.col); }
-
-    bool operator==(const coord& other) const
-    { return row == other.row && col == other.col; }
-    bool operator!=(const coord& other) const
-    { return !(*this == other); }
 };
+
+inline bool operator<(const coord& a, const coord& b)
+{
+    return a.row < b.row || (a.row == b.row && a.col < b.col);
+}
+
+inline bool operator==(const coord& a, const coord& b)
+{
+    return a.row == b.row && a.col == b.col;
+}
+
+inline bool operator!=(const coord& a, const coord& b)
+{
+    return !(a == b);
+}
 
 } // namespace ewig
