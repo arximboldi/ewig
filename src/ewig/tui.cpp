@@ -96,6 +96,7 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::ctrl('Y')), "paste"},
     {key::seq(key::ctrl('@')), "start-selection"}, // ctrl-space
     {key::seq(key::ctrl('X'), key::ctrl('C')), "quit"},
+    {key::seq(key::ctrl('X'), key::ctrl('S')), "save"},
     {key::seq(key::ctrl('X'), 'h'), "select-whole-buffer"},
     {key::seq(key::ctrl('X'), '['), "move-beginning-buffer"},
     {key::seq(key::ctrl('X'), ']'), "move-end-buffer"},

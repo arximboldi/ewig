@@ -44,6 +44,7 @@ struct application
 
 using command = std::function<boost::optional<application>(application, coord)>;
 
+application save(application app, coord);
 application paste(application app, coord size);
 application put_message(application state, std::string str);
 application put_clipboard(application state, text content);

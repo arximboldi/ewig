@@ -48,9 +48,21 @@ static const auto global_commands = commands
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
     {"quit",                   [](auto, auto) { return boost::none; }},
+    {"save",                   save},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
+
+application save(application state, coord)
+{
+    if (is_dirty(state.current)) {
+        state.current = save_buffer(state.current);
+        return put_message(state, "File saved: "s +
+                           state.current.from.name.get());
+    } else {
+        return put_message(state, "Nothing to save");
+    }
+}
 
 application put_message(application state, std::string str)
 {

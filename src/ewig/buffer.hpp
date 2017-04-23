@@ -41,7 +41,7 @@ struct file
 
 struct buffer
 {
-    file file;
+    file from;
     text content;
     coord cursor;
     coord scroll;
@@ -51,7 +51,9 @@ struct buffer
 constexpr auto tab_width = 8;
 
 file load_file(const char* file_name);
+file save_file(const char* file_name, text content);
 buffer load_buffer(const char* file_name);
+buffer save_buffer(buffer buf);
 bool is_dirty(const buffer& buf);
 
 coord actual_cursor(buffer buf);

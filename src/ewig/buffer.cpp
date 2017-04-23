@@ -43,6 +43,25 @@ file load_file(const char* file_name)
     return { file_name, content.persistent() };
 }
 
+file save_file(const char* file_name, text content)
+{
+    auto file = std::wofstream{file_name};
+    file.exceptions(std::ifstream::badbit);
+    immer::for_each(content, [&] (auto l) {
+        immer::for_each_chunk(l, [&] (auto first, auto last) {
+            file.write(first, last - first);
+        });
+        file.put('\n');
+    });
+    return {file_name, content};
+}
+
+buffer save_buffer(buffer buf)
+{
+    buf.from = save_file(buf.from.name.get().c_str(), buf.content);
+    return buf;
+}
+
 buffer load_buffer(const char* file_name)
 {
     auto file = load_file(file_name);
