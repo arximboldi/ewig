@@ -61,8 +61,8 @@ static const auto global_commands = commands
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
-boost::optional<app_state>
-eval_command(app_state state, const std::string& cmd, coord editor_size)
+boost::optional<application>
+eval_command(application state, const std::string& cmd, coord editor_size)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {
@@ -73,7 +73,7 @@ eval_command(app_state state, const std::string& cmd, coord editor_size)
     }
 }
 
-app_state eval_insert_char(app_state state, wchar_t key, coord editor_size)
+application eval_insert_char(application state, wchar_t key, coord editor_size)
 {
     state.buffer = scroll_to_cursor(
         insert_char(clear_selection(state.buffer), key),
@@ -93,7 +93,7 @@ file_buffer load_file(const char* file_name)
     return { result, {}, {}, {}, file_name, result };
 }
 
-app_state put_message(app_state state, string_t str)
+application put_message(application state, string_t str)
 {
     state.messages = std::move(state.messages)
         .push_back({std::time(nullptr), str});

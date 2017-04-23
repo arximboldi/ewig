@@ -65,19 +65,19 @@ struct message
     string_t content;
 };
 
-struct app_state
+struct application
 {
     file_buffer buffer;
     immer::vector<message> messages;
 };
 
-using command = std::function<boost::optional<app_state>(app_state, coord)>;
+using command = std::function<boost::optional<application>(application, coord)>;
 
 constexpr auto tab_width = 8;
 
 file_buffer load_file(const char* file_name);
 
-app_state put_message(app_state state, string_t str);
+application put_message(application state, string_t str);
 
 coord actual_cursor(file_buffer buf);
 coord actual_display_cursor(const file_buffer& buf);
@@ -116,15 +116,15 @@ file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
 std::tuple<coord, coord> selected_region(file_buffer buf);
 
-boost::optional<app_state>
-eval_command(app_state state, const std::string& cmd, coord editor_size);
-app_state
-eval_insert_char(app_state state, wchar_t key, coord editor_size);
+boost::optional<application>
+eval_command(application state, const std::string& cmd, coord editor_size);
+application
+eval_insert_char(application state, wchar_t key, coord editor_size);
 
 template <typename Fn>
 command edit_command(Fn fn)
 {
-    return [=] (app_state state, coord wsize) {
+    return [=] (application state, coord wsize) {
         state.buffer = scroll_to_cursor(fn(state.buffer), wsize);
         return state;
     };
@@ -133,7 +133,7 @@ command edit_command(Fn fn)
 template <typename Fn>
 command scroll_command(Fn fn)
 {
-    return [=] (app_state state, coord wsize) {
+    return [=] (application state, coord wsize) {
         state.buffer = fn(state.buffer, wsize);
         return state;
     };

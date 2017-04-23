@@ -27,7 +27,7 @@ namespace ewig {
 
 struct tui
 {
-    app_state state;
+    application state;
 
     tui(const char* file_name);
     ~tui();

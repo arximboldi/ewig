@@ -196,7 +196,7 @@ void draw_text_cursor(const file_buffer& buf, coord window_size)
              cursor.row < buf.scroll.row + window_size.row);
 }
 
-void draw(const app_state& app)
+void draw(const application& app)
 {
     auto size = get_editor_size();
     erase();
@@ -227,7 +227,7 @@ public:
         , seq_{}
     {}
 
-    boost::optional<app_state> handle_key(app_state state, int res, wchar_t key)
+    boost::optional<application> handle_key(application state, int res, wchar_t key)
     {
         seq_.push_back({res, key});
         auto it = map_.find(seq_);
