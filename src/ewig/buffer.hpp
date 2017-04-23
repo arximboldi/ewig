@@ -52,6 +52,7 @@ constexpr auto tab_width = 8;
 
 file load_file(const char* file_name);
 buffer load_buffer(const char* file_name);
+bool is_dirty(const buffer& buf);
 
 coord actual_cursor(buffer buf);
 coord actual_display_cursor(const buffer& buf);

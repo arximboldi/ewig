@@ -49,6 +49,11 @@ buffer load_buffer(const char* file_name)
     return {file, file.content};
 }
 
+bool is_dirty(const buffer& buf)
+{
+    return buf.from.content != buf.content;
+}
+
 index display_line_col(const line& ln, index col)
 {
     using namespace std;

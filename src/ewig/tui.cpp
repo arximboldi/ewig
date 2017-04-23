@@ -195,10 +195,10 @@ void draw_text(buffer buf, coord size)
 void draw_mode_line(const buffer& buffer, int maxcol)
 {
     attrset(A_REVERSE);
-    auto dirty_mark = buffer.content == buffer.file.content ? "--" : "**";
+    auto dirty_mark = is_dirty(buffer) ? "**" : "--";
     printw(" %s %s  (%d, %d)",
            dirty_mark,
-           buffer.file.name.get().c_str(),
+           buffer.from.name.get().c_str(),
            buffer.cursor.col,
            buffer.cursor.row);
     hline(' ', maxcol);
@@ -229,17 +229,17 @@ void draw(const application& app)
     erase();
 
     move(0, 0);
-    draw_text(app.buffer, size);
+    draw_text(app.current, size);
 
     move(size.row, 0);
-    draw_mode_line(app.buffer, size.col);
+    draw_mode_line(app.current, size.col);
 
     if (!app.messages.empty()) {
         move(size.row + 1, 0);
         draw_message(app.messages.back());
     }
 
-    draw_text_cursor(app.buffer, size);
+    draw_text_cursor(app.current, size);
     refresh();
 }
 

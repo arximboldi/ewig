@@ -35,7 +35,7 @@ struct message
 
 struct application
 {
-    buffer buffer;
+    buffer current;
     key_map keys;
     key_seq input;
     immer::vector<text> clipboard;
@@ -62,7 +62,24 @@ template <typename Fn>
 command edit_command(Fn fn)
 {
     return [=] (application state, coord size) {
-        return apply_edit(state, size, fn(state.buffer));
+        return apply_edit(state, size, fn(state.current));
+    };
+}
+
+template <typename Fn>
+command paste_command(Fn fn)
+{
+    return [=] (application state, coord size) {
+        return apply_edit(state, size, fn(state.current, state.clipboard.back()));
+    };
+}
+
+template <typename Fn>
+command scroll_command(Fn fn)
+{
+    return [=] (application state, coord wsize) {
+        state.current = fn(state.current, wsize);
+        return state;
     };
 }
 
@@ -71,24 +88,7 @@ command key_command(Fn fn)
 {
     return [=] (application state, coord size) {
         auto key = std::get<1>(state.input.back());
-        return apply_edit(state, size, fn(state.buffer, key));
-    };
-}
-
-template <typename Fn>
-command paste_command(Fn fn)
-{
-    return [=] (application state, coord size) {
-        return apply_edit(state, size, fn(state.buffer, state.clipboard.back()));
-    };
-}
-
-template <typename Fn>
-command scroll_command(Fn fn)
-{
-    return [=] (application state, coord wsize) {
-        state.buffer = fn(state.buffer, wsize);
-        return state;
+        return apply_edit(state, size, fn(state.current, key));
     };
 }
 

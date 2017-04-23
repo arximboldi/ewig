@@ -116,13 +116,13 @@ eval_command(application state, const std::string& cmd, coord size)
 
 application apply_edit(application state, coord size, buffer edit)
 {
-    state.buffer = scroll_to_cursor(edit, editor_size(size));
+    state.current = scroll_to_cursor(edit, editor_size(size));
     return state;
 }
 
 application apply_edit(application state, coord size, std::pair<buffer, text> edit)
 {
-    state.buffer = scroll_to_cursor(edit.first, editor_size(size));
+    state.current = scroll_to_cursor(edit.first, editor_size(size));
     return put_clipboard(state, edit.second);
 }
 
