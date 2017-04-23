@@ -19,15 +19,11 @@
 //
 
 #include "ewig/tui.hpp"
-#include "ewig/keys.hpp"
+#include "ewig/application.hpp"
 
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
 #include <boost/optional.hpp>
-
-extern "C" {
-#include <ncursesw/ncurses.h>
-}
 
 #include <algorithm>
 #include <fstream>
@@ -139,7 +135,7 @@ void display_line_fill(const line& ln, int first_col, int num_col,
     }
 }
 
-void draw_text(file_buffer buf, coord size)
+void draw_text(buffer buf, coord size)
 {
     using namespace std;
     attrset(A_NORMAL);
@@ -196,7 +192,7 @@ void draw_text(file_buffer buf, coord size)
     });
 }
 
-void draw_mode_line(const file_buffer& buffer, int maxcol)
+void draw_mode_line(const buffer& buffer, int maxcol)
 {
     attrset(A_REVERSE);
     auto dirty_mark = buffer.content == buffer.file_content ? "--" : "**";
@@ -217,7 +213,7 @@ void draw_message(const message& msg)
     attroff(COLOR_PAIR(color::message));
 }
 
-void draw_text_cursor(const file_buffer& buf, coord window_size)
+void draw_text_cursor(const buffer& buf, coord window_size)
 {
     auto cursor = actual_display_cursor(buf);
     move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);

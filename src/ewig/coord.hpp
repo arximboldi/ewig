@@ -20,33 +20,22 @@
 
 #pragma once
 
-#include <ewig/coord.hpp>
-#include <ewig/keys.hpp>
-
 namespace ewig {
 
-enum class color
+using index = int;
+
+struct coord
 {
-    message = 1,
-    selection,
+    index row;
+    index col;
+
+    bool operator<(const coord& other) const
+    { return row < other.row || (row == other.row && col < other.col); }
+
+    bool operator==(const coord& other) const
+    { return row == other.row && col == other.col; }
+    bool operator!=(const coord& other) const
+    { return !(*this == other); }
 };
-
-struct tui
-{
-    tui();
-
-    key_code read_key();
-    coord size();
-
-private:
-    struct cleanup_fn
-    {
-        void operator() (WINDOW* win) const;
-    };
-
-    std::unique_ptr<WINDOW, cleanup_fn> win_;
-};
-
-int main(int argc, char* argv[]);
 
 } // namespace ewig

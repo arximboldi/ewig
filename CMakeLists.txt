@@ -15,9 +15,10 @@ include_directories(
   "${PROJECT_SOURCE_DIR}/deps/immer")
 
 add_executable(ewig
-  src/ewig/keys.cpp
-  src/ewig/model.cpp
+  src/ewig/application.cpp
+  src/ewig/buffer.cpp
   src/ewig/tui.cpp
   src/main.cpp
+  src/ewig/keys.cpp
   )
 target_link_libraries(ewig -lncursesw)

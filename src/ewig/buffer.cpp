@@ -18,7 +18,7 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "ewig/model.hpp"
+#include "ewig/buffer.hpp"
 
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
@@ -30,91 +30,9 @@
 #include <string>
 #include <unordered_map>
 
-using namespace std::string_literals;
-
 namespace ewig {
 
-using commands = std::unordered_map<std::string, command>;
-
-static const auto global_commands = commands
-{
-    {"delete-char",            edit_command(delete_char)},
-    {"delete-char-right",      edit_command(delete_char_right)},
-    {"insert-tab",             edit_command(insert_tab)},
-    {"kill-line",              edit_command(cut_rest)},
-    {"copy",                   edit_command(copy)},
-    {"cut",                    edit_command(cut)},
-    {"move-beginning-of-line", edit_command(move_line_start)},
-    {"move-beginning-buffer",  edit_command(move_buffer_start)},
-    {"move-end-buffer",        edit_command(move_buffer_end)},
-    {"move-down",              edit_command(move_cursor_down)},
-    {"move-end-of-line",       edit_command(move_line_end)},
-    {"move-left",              edit_command(move_cursor_left)},
-    {"move-right",             edit_command(move_cursor_right)},
-    {"move-up",                edit_command(move_cursor_up)},
-    {"new-line",               edit_command(insert_new_line)},
-    {"page-down",              scroll_command(page_down)},
-    {"page-up",                scroll_command(page_up)},
-    {"paste",                  paste_command(insert_text)},
-    {"quit",                   [](auto, auto) { return boost::none; }},
-    {"start-selection",        edit_command(start_selection)},
-    {"select-whole-buffer",    edit_command(select_whole_buffer)},
-};
-
-coord editor_size(coord size)
-{
-    return {size.row - 2, size.col};
-}
-
-application clear_input(application state)
-{
-    state.input = {};
-    return state;
-}
-
-boost::optional<application> handle_key(application state, key_code key, coord size)
-{
-    state.input = state.input.push_back(key);
-    const auto& map = state.keys.get();
-    auto it = map.find(state.input);
-    if (it != map.end()) {
-        if (!it->second.empty())
-            return optional_map(eval_command(state, it->second, size),
-                                clear_input);
-    } else if (key::ctrl('[') != key_seq{key}) {
-        using std::get;
-        auto is_single_char = state.input.size() == 1;
-        if (is_single_char && get<0>(key) == OK && !std::iscntrl(get<1>(key))) {
-            state = put_message(state, "adding character: "s + key_name(get<1>(key)));
-            return clear_input(eval_insert_char(state, get<1>(key), editor_size(size)));
-        } else {
-            return clear_input(put_message(state, "unbound key sequence"));
-        }
-    }
-    return state;
-}
-
-boost::optional<application>
-eval_command(application state, const std::string& cmd, coord editor_size)
-{
-    auto it = global_commands.find(cmd);
-    if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd),
-                          editor_size);
-    } else {
-        return put_message(state, "unknown_command: "s + cmd);
-    }
-}
-
-application eval_insert_char(application state, wchar_t key, coord editor_size)
-{
-    state.buffer = scroll_to_cursor(
-        insert_char(clear_selection(state.buffer), key),
-        editor_size);
-    return state;
-}
-
-file_buffer load_file(const char* file_name)
+buffer load_file(const char* file_name)
 {
     auto file = std::wifstream{file_name};
     auto content = text{}.transient();
@@ -124,23 +42,6 @@ file_buffer load_file(const char* file_name)
         content.push_back({begin(ln), end(ln)});
     auto result = content.persistent();
     return { result, {}, {}, {}, file_name, result };
-}
-
-application put_message(application state, std::string str)
-{
-    state.messages = std::move(state.messages)
-        .push_back({std::time(nullptr), std::move(str)});
-    return state;
-}
-
-coord actual_cursor(file_buffer buf)
-{
-    return {
-        buf.cursor.row,
-        std::min(buf.cursor.row < (index)buf.content.size()
-                 ? (index)buf.content[buf.cursor.row].size() : 0,
-                 buf.cursor.col)
-    };
 }
 
 index display_line_col(const line& ln, index col)
@@ -156,7 +57,7 @@ index display_line_col(const line& ln, index col)
     return cur_col;
 }
 
-coord actual_display_cursor(const file_buffer& buf)
+coord actual_display_cursor(const buffer& buf)
 {
     auto cursor = actual_cursor(buf);
     if (cursor.row < (index)buf.content.size())
@@ -164,7 +65,7 @@ coord actual_display_cursor(const file_buffer& buf)
     return cursor;
 }
 
-file_buffer page_up(file_buffer buf, coord size)
+buffer page_up(buffer buf, coord size)
 {
     if (buf.scroll.row > size.row) {
         buf.scroll.row -= size.row;
@@ -180,7 +81,7 @@ file_buffer page_up(file_buffer buf, coord size)
     return buf;
 }
 
-file_buffer page_down(file_buffer buf, coord size)
+buffer page_down(buffer buf, coord size)
 {
     if (buf.scroll.row + size.row < (index)buf.content.size()) {
         buf.scroll.row += size.row;
@@ -192,44 +93,44 @@ file_buffer page_down(file_buffer buf, coord size)
     return buf;
 }
 
-file_buffer move_cursor_up(file_buffer buf)
+buffer move_cursor_up(buffer buf)
 {
     buf.cursor.row = std::max(buf.cursor.row - 1, 0);
     return buf;
 }
 
-file_buffer move_cursor_down(file_buffer buf)
+buffer move_cursor_down(buffer buf)
 {
     buf.cursor.row = std::min(buf.cursor.row + 1, (index)buf.content.size());
     return buf;
 }
 
-file_buffer move_line_start(file_buffer buf)
+buffer move_line_start(buffer buf)
 {
     buf.cursor.col = 0;
     return buf;
 }
 
-file_buffer move_line_end(file_buffer buf)
+buffer move_line_end(buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size())
         buf.cursor.col = buf.content[buf.cursor.row].size();
     return buf;
 }
 
-file_buffer move_buffer_start(file_buffer buf)
+buffer move_buffer_start(buffer buf)
 {
     buf.cursor = {0,0};
     return buf;
 }
 
-file_buffer move_buffer_end(file_buffer buf)
+buffer move_buffer_end(buffer buf)
 {
     buf.cursor = {(index)buf.content.size(),0};
     return buf;
 }
 
-file_buffer move_cursor_left(file_buffer buf)
+buffer move_cursor_left(buffer buf)
 {
     auto cur = actual_cursor(buf);
     if (cur.col - 1 < 0) {
@@ -244,7 +145,7 @@ file_buffer move_cursor_left(file_buffer buf)
     return buf;
 }
 
-file_buffer move_cursor_right(file_buffer buf)
+buffer move_cursor_right(buffer buf)
 {
     auto cur = actual_cursor(buf);
     auto max = buf.cursor.row < (index)buf.content.size()
@@ -258,7 +159,7 @@ file_buffer move_cursor_right(file_buffer buf)
     return buf;
 }
 
-file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
+buffer scroll_to_cursor(buffer buf, coord wsize)
 {
     auto cur = actual_display_cursor(buf);
     if (cur.row >= wsize.row + buf.scroll.row) {
@@ -274,7 +175,7 @@ file_buffer scroll_to_cursor(file_buffer buf, coord wsize)
     return buf;
 }
 
-file_buffer insert_new_line(file_buffer buf)
+buffer insert_new_line(buffer buf)
 {
     auto cur = actual_cursor(buf);
     if (cur.row == (index)buf.content.size()) {
@@ -294,12 +195,12 @@ file_buffer insert_new_line(file_buffer buf)
     }
 }
 
-file_buffer insert_tab(file_buffer buf)
+buffer insert_tab(buffer buf)
 {
     return insert_char(buf, '\t');
 }
 
-file_buffer insert_char(file_buffer buf, wchar_t value)
+buffer insert_char(buffer buf, wchar_t value)
 {
     auto cur = actual_cursor(buf);
     if (cur.row == (index)buf.content.size()) {
@@ -313,7 +214,7 @@ file_buffer insert_char(file_buffer buf, wchar_t value)
     return buf;
 }
 
-file_buffer delete_char(file_buffer buf)
+buffer delete_char(buffer buf)
 {
     auto cur = actual_cursor(buf);
 
@@ -335,7 +236,7 @@ file_buffer delete_char(file_buffer buf)
     return buf;
 }
 
-file_buffer delete_char_right(file_buffer buf)
+buffer delete_char_right(buffer buf)
 {
     auto cur = actual_cursor(buf);
 
@@ -352,7 +253,7 @@ file_buffer delete_char_right(file_buffer buf)
     return buf;
 }
 
-std::pair<file_buffer, text> cut_rest(file_buffer buf)
+std::pair<buffer, text> cut_rest(buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size()) {
         auto ln = buf.content[buf.cursor.row];
@@ -368,7 +269,7 @@ std::pair<file_buffer, text> cut_rest(file_buffer buf)
     }
 }
 
-file_buffer insert_text(file_buffer buf, text paste)
+buffer insert_text(buffer buf, text paste)
 {
     auto cur = actual_cursor(buf);
     if (cur.row < (index)buf.content.size()) {
@@ -391,7 +292,7 @@ file_buffer insert_text(file_buffer buf, text paste)
     return buf;
 }
 
-text selected_text(file_buffer buf)
+text selected_text(buffer buf)
 {
     coord starts, ends;
     std::tie(starts, ends) = selected_region(buf);
@@ -413,7 +314,7 @@ text selected_text(file_buffer buf)
             });
 }
 
-std::pair<file_buffer, text> cut(file_buffer buf)
+std::pair<buffer, text> cut(buffer buf)
 {
     auto selection = selected_text(buf);
     auto starts = coord{}, ends = coord{};
@@ -444,34 +345,34 @@ std::pair<file_buffer, text> cut(file_buffer buf)
     return {buf, selection};
 }
 
-std::pair<file_buffer, text> copy(file_buffer buf)
+std::pair<buffer, text> copy(buffer buf)
 {
     auto result = selected_text(buf);
     buf.selection_start = boost::none;
     return {buf, result};
 }
 
-file_buffer start_selection(file_buffer buf)
+buffer start_selection(buffer buf)
 {
     auto cur = actual_cursor(buf);
     buf.selection_start = cur;
     return buf;
 }
 
-file_buffer select_whole_buffer(file_buffer buf)
+buffer select_whole_buffer(buffer buf)
 {
     buf.cursor = {0, 0};
     buf.selection_start = {(index)buf.content.size(), (index)buf.content.back().size()};
     return buf;
 }
 
-file_buffer clear_selection(file_buffer buf)
+buffer clear_selection(buffer buf)
 {
     buf.selection_start = boost::none;
     return buf;
 }
 
-std::tuple<coord, coord> selected_region(file_buffer buf)
+std::tuple<coord, coord> selected_region(buffer buf)
 {
     auto cursor = actual_cursor(buf);
     auto starts = std::min(cursor, *buf.selection_start);
@@ -481,25 +382,6 @@ std::tuple<coord, coord> selected_region(file_buffer buf)
     ends.col   = ends.row < (index)buf.content.size()
                ? display_line_col(buf.content[ends.row], ends.col) : 0;
     return {starts, ends};
-}
-
-application apply_edit(application state, coord size, file_buffer edit)
-{
-    state.buffer = scroll_to_cursor(edit, editor_size(size));
-    return state;
-}
-
-application apply_edit(application state, coord size, std::pair<file_buffer, text> edit)
-{
-    state.buffer = scroll_to_cursor(edit.first, editor_size(size));
-    return put_clipboard(state, edit.second);
-}
-
-application put_clipboard(application state, text content)
-{
-    if (!content.empty())
-        state.clipboard = state.clipboard.push_back(content);
-    return state;
 }
 
 } // namespace ewig
