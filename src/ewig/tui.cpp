@@ -195,10 +195,10 @@ void draw_text(buffer buf, coord size)
 void draw_mode_line(const buffer& buffer, int maxcol)
 {
     attrset(A_REVERSE);
-    auto dirty_mark = buffer.content == buffer.file_content ? "--" : "**";
+    auto dirty_mark = buffer.content == buffer.file.content ? "--" : "**";
     printw(" %s %s  (%d, %d)",
            dirty_mark,
-           buffer.file_name.get().c_str(),
+           buffer.file.name.get().c_str(),
            buffer.cursor.col,
            buffer.cursor.row);
     hline(' ', maxcol);
@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    auto state = application{load_file(argv[1]), key_map_emacs};
+    auto state = application{load_buffer(argv[1]), key_map_emacs};
     auto ui = tui{};
     draw(state);
     while (auto new_state = handle_key(state, ui.read_key(), ui.size())) {

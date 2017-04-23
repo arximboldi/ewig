@@ -26,8 +26,8 @@ using index = int;
 
 struct coord
 {
-    index row;
-    index col;
+    index row = {};
+    index col = {};
 
     bool operator<(const coord& other) const
     { return row < other.row || (row == other.row && col < other.col); }

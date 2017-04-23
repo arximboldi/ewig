@@ -33,19 +33,25 @@ namespace ewig {
 using line = immer::flex_vector<wchar_t>;
 using text = immer::flex_vector<line>;
 
+struct file
+{
+    immer::box<std::string> name;
+    text content;
+};
+
 struct buffer
 {
+    file file;
     text content;
     coord cursor;
     coord scroll;
     boost::optional<coord> selection_start;
-    immer::box<std::string> file_name;
-    text file_content;
 };
 
 constexpr auto tab_width = 8;
 
-buffer load_file(const char* file_name);
+file load_file(const char* file_name);
+buffer load_buffer(const char* file_name);
 
 coord actual_cursor(buffer buf);
 coord actual_display_cursor(const buffer& buf);

@@ -32,7 +32,7 @@
 
 namespace ewig {
 
-buffer load_file(const char* file_name)
+file load_file(const char* file_name)
 {
     auto file = std::wifstream{file_name};
     auto content = text{}.transient();
@@ -40,8 +40,13 @@ buffer load_file(const char* file_name)
     auto ln = std::wstring{};
     while (std::getline(file, ln))
         content.push_back({begin(ln), end(ln)});
-    auto result = content.persistent();
-    return { result, {}, {}, {}, file_name, result };
+    return { file_name, content.persistent() };
+}
+
+buffer load_buffer(const char* file_name)
+{
+    auto file = load_file(file_name);
+    return {file, file.content};
 }
 
 index display_line_col(const line& ln, index col)
