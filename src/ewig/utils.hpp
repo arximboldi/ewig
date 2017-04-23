@@ -20,8 +20,13 @@
 
 #pragma once
 
+#include <immer/vector.hpp>
+
 #include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/optional.hpp>
+
+#include <tuple>
 
 namespace std
 {
@@ -35,13 +40,23 @@ struct hash<tuple<T...>>
     }
 };
 
-template <typename... T>
-struct hash<vector<T...>>
+template <typename T>
+struct hash<immer::vector<T>>
 {
-    size_t operator()(const vector<T...>& arg) const noexcept
+    size_t operator()(const immer::vector<T>& arg) const noexcept
     {
         return boost::hash_range(arg.begin(), arg.end()) ;
     }
 };
 
 } //namespace std
+
+namespace ewig {
+
+template <typename T, typename Fn>
+boost::optional<T> optional_map(boost::optional<T> v, Fn&& fn)
+{
+    return v ? std::forward<Fn>(fn)(std::move(*v)) : v;
+}
+
+} // namespace ewig

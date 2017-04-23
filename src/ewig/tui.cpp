@@ -20,7 +20,6 @@
 
 #include "ewig/tui.hpp"
 #include "ewig/keys.hpp"
-#include "ewig/model.hpp"
 
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
@@ -62,6 +61,14 @@ key_code tui::read_key()
     auto key = wint_t{};
     auto res = get_wch(&key);
     return {res, key};
+}
+
+coord tui::size()
+{
+    int maxrow, maxcol;
+    getmaxyx(stdscr, maxrow, maxcol);
+    // make space for minibuffer and modeline
+    return {maxrow, maxcol};
 }
 
 void tui::cleanup_fn::operator() (WINDOW* win) const
@@ -240,63 +247,20 @@ void draw(const application& app)
     refresh();
 }
 
-class key_handler
-{
-    key_map map_;
-    key_seq seq_;
-
-public:
-    key_handler(key_map map)
-        : map_{map}
-        , seq_{}
-    {}
-
-    boost::optional<application> handle_key(application state, int res, wchar_t key)
-    {
-        seq_.push_back({res, key});
-        auto it = map_.find(seq_);
-        if (it != map_.end()) {
-            if (!it->second.empty()) {
-                seq_.clear();
-                return eval_command(state, it->second, get_editor_size());
-            } else {
-                return state;
-            }
-        } else {
-            auto is_single_char = seq_.size() == 1;
-            seq_.clear();
-            if (is_single_char && res == OK && !std::iscntrl(key)) {
-                state = put_message(state, "adding character: "s + key_name(key));
-                return eval_insert_char(state, key, get_editor_size());
-            } else {
-                return put_message(state, "unbound key sequence");
-            }
-        }
-    }
-};
-
-boost::optional<application> handle_key(application state, key_code key)
-{
-    static auto handler = key_handler{key_map_emacs};
-    return handler.handle_key(state, std::get<0>(key), std::get<1>(key));
-}
-
 } // anonymous namespace
 
 int main(int argc, char* argv[])
 {
     std::locale::global(std::locale(""));
-
     if (argc != 2) {
         std::cerr << "Give me a file name." << std::endl;
         return 1;
     }
 
-    auto state = application{load_file(argv[1])};
+    auto state = application{load_file(argv[1]), key_map_emacs};
     auto ui = tui{};
     draw(state);
-
-    while (auto new_state = handle_key(state, ui.read_key())) {
+    while (auto new_state = handle_key(state, ui.read_key(), ui.size())) {
         state = *new_state;
         draw(state);
     }

@@ -27,13 +27,13 @@ namespace ewig {
 
 key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args)
 {
-    auto map = key_map{};
+    auto map = typename key_map::value_type{};
     for (auto item : args) {
         auto kseq = key_seq{};
         for (auto kcode : item.first) {
             if (!map[kseq].empty())
                 throw std::runtime_error{"ambiguous bindings"};
-            kseq.push_back(kcode);
+            kseq = kseq.push_back(kcode);
         }
         auto res = map.emplace(std::move(kseq), std::move(item.second));
         if (!res.second)

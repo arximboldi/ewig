@@ -22,24 +22,28 @@
 
 #include <ewig/utils.hpp>
 
-extern "C" {
-#include <ncursesw/ncurses.h>
-}
-
+#include <immer/vector.hpp>
+#include <immer/vector_transient.hpp>
+#include <immer/box.hpp>
+#include <immer/algorithm.hpp>
 
 #include <tuple>
 #include <unordered_map>
 #include <vector>
 
+extern "C" {
+#include <ncursesw/ncurses.h>
+}
+
 namespace ewig {
 
 using key_code = std::tuple<int, wint_t>;
-using key_seq  = std::vector<key_code>;
-using key_map  = std::unordered_map<key_seq, std::string>;
+using key_seq  = immer::vector<key_code>;
+using key_map  = immer::box<std::unordered_map<key_seq, std::string>>;
 
 // Builds a keymap from `args`.  It also associates all key sequence
-// prefixes to the empty string, and checks for ambiguous key
-// command sequences.
+// prefixes to the empty string, and checks for ambiguous key command
+// sequences.
 key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args);
 
 namespace key {
@@ -74,10 +78,10 @@ inline key_seq seq(key_seq xs)
 template <typename T, typename ...Ts>
 auto seq(T arg, Ts... args)
 {
-    auto x  = seq(arg);
+    auto x  = seq(arg).transient();
     auto xs = seq(args...);
-    x.insert(x.end(), xs.begin(), xs.end());
-    return x;
+    immer::copy(xs, std::back_inserter(x));
+    return x.persistent();
 }
 
 } // namespace key

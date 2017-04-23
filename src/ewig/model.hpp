@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <ewig/keys.hpp>
+
 #include <immer/box.hpp>
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
@@ -66,6 +68,8 @@ struct message
 struct application
 {
     file_buffer buffer;
+    key_map keys;
+    key_seq input;
     immer::vector<message> messages;
 };
 
@@ -114,10 +118,14 @@ file_buffer start_selection(file_buffer buf);
 file_buffer clear_selection(file_buffer buf);
 std::tuple<coord, coord> selected_region(file_buffer buf);
 
-boost::optional<application>
-eval_command(application state, const std::string& cmd, coord editor_size);
-application
-eval_insert_char(application state, wchar_t key, coord editor_size);
+boost::optional<application> eval_command(application state, const std::string& cmd,
+                                          coord editor_size);
+application eval_insert_char(application state, wchar_t key, coord editor_size);
+
+application clear_input(application state);
+boost::optional<application> handle_key(application state, key_code key, coord size);
+
+coord editor_size(coord size);
 
 template <typename Fn>
 command edit_command(Fn fn)

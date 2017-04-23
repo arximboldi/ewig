@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <ewig/model.hpp>
 #include <ewig/keys.hpp>
 
 namespace ewig {
@@ -35,6 +36,7 @@ struct tui
     tui();
 
     key_code read_key();
+    coord size();
 
 private:
     struct cleanup_fn

@@ -61,6 +61,39 @@ static const auto global_commands = commands
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
+coord editor_size(coord size)
+{
+    return {size.row - 2, size.col};
+}
+
+application clear_input(application state)
+{
+    state.input = {};
+    return state;
+}
+
+boost::optional<application> handle_key(application state, key_code key, coord size)
+{
+    state.input = state.input.push_back(key);
+    const auto& map = state.keys.get();
+    auto it = map.find(state.input);
+    if (it != map.end()) {
+        if (!it->second.empty())
+            return optional_map(eval_command(state, it->second, editor_size(size)),
+                                clear_input);
+    } else if (key::ctrl('[') != key_seq{key}) {
+        using std::get;
+        auto is_single_char = state.input.size() == 1;
+        if (is_single_char && get<0>(key) == OK && !std::iscntrl(get<1>(key))) {
+            state = put_message(state, "adding character: "s + key_name(get<1>(key)));
+            return clear_input(eval_insert_char(state, get<1>(key), editor_size(size)));
+        } else {
+            return clear_input(put_message(state, "unbound key sequence"));
+        }
+    }
+    return state;
+}
+
 boost::optional<application>
 eval_command(application state, const std::string& cmd, coord editor_size)
 {
