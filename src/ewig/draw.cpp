@@ -30,7 +30,8 @@ namespace {
 
 // Fills the string `str` with the display contents of the line `ln`
 // between the display columns `first_col` and `first_col + num_col`.
-// It takes into account tabs, expanding them correctly.
+// It takes into account tabs, expanding them correctly, and fills the
+// remaining until num_col with spaces.
 void display_line_fill(const line& ln, int first_col, int num_col,
                        std::wstring& str)
 {
@@ -51,6 +52,7 @@ void display_line_fill(const line& ln, int first_col, int num_col,
         } else
             ++cur_col;
     }
+    std::fill_n(back_inserter(str), num_col - str.size(), ' ');
 }
 
 } // anonymous namespace
@@ -58,53 +60,34 @@ void display_line_fill(const line& ln, int first_col, int num_col,
 void draw_text(const buffer& buf, coord size)
 {
     using namespace std;
-    attrset(A_NORMAL);
     int col, row;
+    attrset(A_NORMAL);
     getyx(stdscr, col, row);
+
     auto str      = std::wstring{};
-    auto first_ln = begin(buf.content) +
-        min(buf.scroll.row, (index)buf.content.size());
-    auto last_ln  = begin(buf.content) +
-        min(size.row + buf.scroll.row, (index)buf.content.size());
+    auto first_ln = begin(buf.content) + min(buf.scroll.row,
+                                             (index)buf.content.size());
+    auto last_ln  = begin(buf.content) + min(size.row + buf.scroll.row,
+                                             (index)buf.content.size());
 
     coord starts, ends;
-    auto has_selection = bool(buf.selection_start);
-    if (has_selection) {
-        std::tie(starts, ends) = selected_region(buf);
-        starts.row -= buf.scroll.row;
-        ends.row   -= buf.scroll.row;
-    }
+    std::tie(starts, ends) = selected_region(buf);
+    starts.row -= buf.scroll.row;
+    ends.row   -= buf.scroll.row;
 
     immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
         display_line_fill(ln, buf.scroll.col + col, size.col, str);
         ::move(row, col);
-        if (has_selection) {
-            if (starts.row == ends.row && starts.row == row) {
-                ::addnwstr(str.c_str(), starts.col);
-                ::attron(COLOR_PAIR(color::selection));
-                ::addnwstr(str.c_str() + starts.col, ends.col - starts.col);
-                ::attroff(COLOR_PAIR(color::selection));
-                ::addnwstr(str.c_str() + ends.col, str.size() - ends.col);
-            } else if (starts.row == row) {
-                ::addnwstr(str.c_str(), starts.col);
-                ::attron(COLOR_PAIR(color::selection));
-                ::addnwstr(str.c_str() + starts.col, str.size() - starts.col);
-                ::hline(' ', size.col);
-                ::attroff(COLOR_PAIR(color::selection));
-            } else if (ends.row == row) {
-                ::attron(COLOR_PAIR(color::selection));
-                ::addnwstr(str.c_str(), ends.col);
-                ::attroff(COLOR_PAIR(color::selection));
-                ::addnwstr(str.c_str() + ends.col, str.size() - ends.col);
-            } else if (starts.row < row && ends.row > row) {
-                ::attron(COLOR_PAIR(color::selection));
-                ::addwstr(str.c_str());
-                ::hline(' ', size.col);
-                ::attroff(COLOR_PAIR(color::selection));
-            } else {
-                ::addwstr(str.c_str());
-            }
+        auto in_selection = row >= starts.row && row <= ends.row;
+        if (in_selection) {
+            auto hl_first = row == starts.row ? starts.col : 0;
+            auto hl_last  = row == ends.row   ? ends.col   : size.col;
+            ::addnwstr(str.c_str(), hl_first);
+            ::attron(COLOR_PAIR(color::selection));
+            ::addnwstr(str.c_str() + hl_first, hl_last - hl_first);
+            ::attroff(COLOR_PAIR(color::selection));
+            ::addnwstr(str.c_str() + hl_last, str.size() - hl_last);
         } else {
             ::addwstr(str.c_str());
         }
@@ -150,7 +133,7 @@ void draw(const application& app, coord size)
     ::move(0, 0);
     draw_text(app.current, editor_size(size));
 
-    ::move(size.row, 0);
+    ::move(size.row - 2, 0);
     draw_mode_line(app.current, size.col);
 
     if (!app.messages.empty()) {

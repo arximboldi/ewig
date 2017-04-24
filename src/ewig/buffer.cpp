@@ -403,14 +403,18 @@ buffer clear_selection(buffer buf)
 
 std::tuple<coord, coord> selected_region(buffer buf)
 {
-    auto cursor = actual_cursor(buf);
-    auto starts = std::min(cursor, *buf.selection_start);
-    auto ends   = std::max(cursor, *buf.selection_start);
-    starts.col = starts.row < (index)buf.content.size()
-               ? display_line_col(buf.content[starts.row], starts.col) : 0;
-    ends.col   = ends.row < (index)buf.content.size()
-               ? display_line_col(buf.content[ends.row], ends.col) : 0;
-    return {starts, ends};
+    if (buf.selection_start) {
+        auto cursor = actual_cursor(buf);
+        auto starts = std::min(cursor, *buf.selection_start);
+        auto ends   = std::max(cursor, *buf.selection_start);
+        starts.col = starts.row < (index)buf.content.size()
+                                  ? display_line_col(buf.content[starts.row], starts.col) : 0;
+        ends.col   = ends.row < (index)buf.content.size()
+                                ? display_line_col(buf.content[ends.row], ends.col) : 0;
+        return {starts, ends};
+    } else {
+        return {};
+    }
 }
 
 buffer undo(buffer buf)
