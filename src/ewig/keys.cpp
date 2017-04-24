@@ -21,6 +21,10 @@
 #include "ewig/keys.hpp"
 #include <cassert>
 
+extern "C" {
+#include <ncursesw/ncurses.h>
+}
+
 using namespace std::string_literals;
 
 namespace ewig {
@@ -48,10 +52,10 @@ namespace {
 
 key_seq from_special_str(const char* name)
 {
-    auto id = tigetstr(name);
+    auto id = ::tigetstr(name);
     if (!id || id == (char*)-1)
         throw std::runtime_error{"tigetstr() error for: "s + name};
-    auto code = key_defined(name);
+    auto code = ::key_defined(name);
     if (code <= 0)
         throw std::runtime_error{"key_defined() error for: "s + name};
     return {{KEY_CODE_YES, code}};
@@ -66,7 +70,19 @@ key_seq seq(char key)
 
 key_seq seq(special key)
 {
-    return {{KEY_CODE_YES, key}};
+    switch(key) {
+    case up        : return {{KEY_CODE_YES, KEY_UP}};
+    case down      : return {{KEY_CODE_YES, KEY_DOWN}};
+    case left      : return {{KEY_CODE_YES, KEY_LEFT}};
+    case right     : return {{KEY_CODE_YES, KEY_RIGHT}};
+    case home      : return {{KEY_CODE_YES, KEY_HOME}};
+    case end       : return {{KEY_CODE_YES, KEY_END}};
+    case backspace : return {{KEY_CODE_YES, KEY_BACKSPACE}};
+    case delete_   : return {{KEY_CODE_YES, KEY_DC}};
+    case page_up   : return {{KEY_CODE_YES, KEY_PPAGE}};
+    case page_down : return {{KEY_CODE_YES, KEY_NPAGE}};
+    };
+    throw std::logic_error("unreachable");
 }
 
 key_seq ctrl(char ch)

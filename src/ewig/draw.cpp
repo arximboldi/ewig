@@ -1,0 +1,165 @@
+//
+// ewig - an immutable text editor
+// Copyright (C) 2017 Juan Pedro Bolivar Puente
+//
+// This file is part of ewig.
+//
+// ewig is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// ewig is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with ewig.  If not, see <http://www.gnu.org/licenses/>.
+//
+
+#include "ewig/draw.hpp"
+
+extern "C" {
+#include <ncursesw/ncurses.h>
+}
+
+namespace ewig{
+
+namespace {
+
+// Fills the string `str` with the display contents of the line `ln`
+// between the display columns `first_col` and `first_col + num_col`.
+// It takes into account tabs, expanding them correctly.
+void display_line_fill(const line& ln, int first_col, int num_col,
+                       std::wstring& str)
+{
+    using namespace std;
+    auto cur_col = index{};
+    for (auto c : ln) {
+        if (num_col == (index)str.size())
+            return;
+        else if (c == '\t') {
+            auto next_col = cur_col + tab_width - (cur_col % tab_width);
+            auto to_fill  = std::min(next_col, first_col + num_col) -
+                            std::max(cur_col, first_col);
+            std::fill_n(back_inserter(str), to_fill, ' ');
+            cur_col = next_col;
+        } else if (cur_col >= first_col) {
+            str.push_back(c);
+            ++cur_col;
+        } else
+            ++cur_col;
+    }
+}
+
+} // anonymous namespace
+
+void draw_text(const buffer& buf, coord size)
+{
+    using namespace std;
+    attrset(A_NORMAL);
+    int col, row;
+    getyx(stdscr, col, row);
+    auto str      = std::wstring{};
+    auto first_ln = begin(buf.content) +
+        min(buf.scroll.row, (index)buf.content.size());
+    auto last_ln  = begin(buf.content) +
+        min(size.row + buf.scroll.row, (index)buf.content.size());
+
+    coord starts, ends;
+    auto has_selection = bool(buf.selection_start);
+    if (has_selection) {
+        std::tie(starts, ends) = selected_region(buf);
+        starts.row -= buf.scroll.row;
+        ends.row   -= buf.scroll.row;
+    }
+
+    immer::for_each(first_ln, last_ln, [&] (auto ln) {
+        str.clear();
+        display_line_fill(ln, buf.scroll.col + col, size.col, str);
+        ::move(row, col);
+        if (has_selection) {
+            if (starts.row == ends.row && starts.row == row) {
+                ::addnwstr(str.c_str(), starts.col);
+                ::attron(COLOR_PAIR(color::selection));
+                ::addnwstr(str.c_str() + starts.col, ends.col - starts.col);
+                ::attroff(COLOR_PAIR(color::selection));
+                ::addnwstr(str.c_str() + ends.col, str.size() - ends.col);
+            } else if (starts.row == row) {
+                ::addnwstr(str.c_str(), starts.col);
+                ::attron(COLOR_PAIR(color::selection));
+                ::addnwstr(str.c_str() + starts.col, str.size() - starts.col);
+                ::hline(' ', size.col);
+                ::attroff(COLOR_PAIR(color::selection));
+            } else if (ends.row == row) {
+                ::attron(COLOR_PAIR(color::selection));
+                ::addnwstr(str.c_str(), ends.col);
+                ::attroff(COLOR_PAIR(color::selection));
+                ::addnwstr(str.c_str() + ends.col, str.size() - ends.col);
+            } else if (starts.row < row && ends.row > row) {
+                ::attron(COLOR_PAIR(color::selection));
+                ::addwstr(str.c_str());
+                ::hline(' ', size.col);
+                ::attroff(COLOR_PAIR(color::selection));
+            } else {
+                ::addwstr(str.c_str());
+            }
+        } else {
+            ::addwstr(str.c_str());
+        }
+        row++;
+    });
+}
+
+void draw_mode_line(const buffer& buffer, index maxcol)
+{
+    attrset(A_REVERSE);
+    auto dirty_mark = is_dirty(buffer) ? "**" : "--";
+    ::printw(" %s %s  (%d, %d)",
+             dirty_mark,
+             buffer.from.name.get().c_str(),
+             buffer.cursor.col,
+             buffer.cursor.row);
+    ::hline(' ', maxcol);
+}
+
+void draw_message(const message& msg)
+{
+    attrset(A_NORMAL);
+    ::attron(COLOR_PAIR(color::message));
+    ::addstr("message: ");
+    ::addstr(msg.content.get().c_str());
+    ::attroff(COLOR_PAIR(color::message));
+}
+
+void draw_text_cursor(const buffer& buf, coord window_size)
+{
+    auto cursor = actual_display_cursor(buf);
+    ::move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);
+    ::curs_set(cursor.col >= buf.scroll.col &&
+               cursor.row >= buf.scroll.row &&
+               cursor.col < buf.scroll.col + window_size.col &&
+               cursor.row < buf.scroll.row + window_size.row);
+}
+
+void draw(const application& app, coord size)
+{
+    erase();
+
+    ::move(0, 0);
+    draw_text(app.current, editor_size(size));
+
+    ::move(size.row, 0);
+    draw_mode_line(app.current, size.col);
+
+    if (!app.messages.empty()) {
+        ::move(size.row - 1, 0);
+        draw_message(app.messages.back());
+    }
+
+    draw_text_cursor(app.current, size);
+    ::refresh();
+}
+
+} // namespace ewig

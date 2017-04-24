@@ -17,8 +17,9 @@ include_directories(
 add_executable(ewig
   src/ewig/application.cpp
   src/ewig/buffer.cpp
+  src/ewig/draw.cpp
+  src/ewig/keys.cpp
   src/ewig/tui.cpp
   src/main.cpp
-  src/ewig/keys.cpp
   )
 target_link_libraries(ewig -lncursesw)

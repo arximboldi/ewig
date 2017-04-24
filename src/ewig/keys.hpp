@@ -31,10 +31,6 @@
 #include <unordered_map>
 #include <vector>
 
-extern "C" {
-#include <ncursesw/ncurses.h>
-}
-
 namespace ewig {
 
 using key_code = std::tuple<int, wint_t>;
@@ -44,22 +40,22 @@ using key_map  = immer::box<std::unordered_map<key_seq, std::string>>;
 // Builds a keymap from `args`.  It also associates all key sequence
 // prefixes to the empty string, and checks for ambiguous key command
 // sequences.
-key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args);
+key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>>);
 
 namespace key {
 
 enum special
 {
-    up        = KEY_UP,
-    down      = KEY_DOWN,
-    left      = KEY_LEFT,
-    right     = KEY_RIGHT,
-    home      = KEY_HOME,
-    end       = KEY_END,
-    backspace = KEY_BACKSPACE,
-    delete_   = KEY_DC,
-    page_up   = KEY_PPAGE,
-    page_down = KEY_NPAGE,
+    up,
+    down,
+    left,
+    right,
+    home,
+    end,
+    backspace,
+    delete_,
+    page_up,
+    page_down,
 };
 
 key_seq ctrl(char key);

@@ -19,59 +19,18 @@
 //
 
 #include "ewig/tui.hpp"
-#include "ewig/application.hpp"
+#include "ewig/draw.hpp"
 
-#include <immer/flex_vector_transient.hpp>
-#include <immer/algorithm.hpp>
-#include <boost/optional.hpp>
-
-#include <algorithm>
-#include <fstream>
 #include <iostream>
-#include <string>
-#include <functional>
+
+extern "C" {
+#include <ncursesw/ncurses.h>
+}
 
 using namespace std::placeholders;
 using namespace std::string_literals;
 
 namespace ewig {
-
-tui::tui()
-    : win_{initscr()}
-{
-    if (win_.get() != stdscr)
-        throw std::runtime_error{"error while initializing ncurses"};
-
-    raw();
-    noecho();
-    keypad(stdscr, true);
-
-    start_color();
-    use_default_colors();
-    init_pair((int)color::message,   COLOR_YELLOW, -1);
-    init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
-}
-
-key_code tui::read_key()
-{
-    auto key = wint_t{};
-    auto res = get_wch(&key);
-    return {res, key};
-}
-
-coord tui::size()
-{
-    int maxrow, maxcol;
-    getmaxyx(stdscr, maxrow, maxcol);
-    // make space for minibuffer and modeline
-    return {maxrow, maxcol};
-}
-
-void tui::cleanup_fn::operator() (WINDOW* win) const
-{
-    if (win)
-        endwin();
-}
 
 namespace {
 
@@ -104,139 +63,42 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::alt('w')),  "copy"},
 });
 
-// Fills the string `str` with the display contents of the line `ln`
-// between the display columns `first_col` and `first_col + num_col`.
-// It takes into account tabs, expanding them correctly.
-void display_line_fill(const line& ln, int first_col, int num_col,
-                       std::wstring& str)
+} // anonymous
+
+tui::tui()
+    : win_{initscr()}
 {
-    using namespace std;
-    auto cur_col = index{};
-    for (auto c : ln) {
-        if (num_col == (index)str.size())
-            return;
-        else if (c == '\t') {
-            auto next_col = cur_col + tab_width - (cur_col % tab_width);
-            auto to_fill  = std::min(next_col, first_col + num_col) -
-                            std::max(cur_col, first_col);
-            std::fill_n(back_inserter(str), to_fill, ' ');
-            cur_col = next_col;
-        } else if (cur_col >= first_col) {
-            str.push_back(c);
-            ++cur_col;
-        } else
-            ++cur_col;
-    }
+    if (win_.get() != ::stdscr)
+        throw std::runtime_error{"error while initializing ncurses"};
+
+    ::raw();
+    ::noecho();
+    ::keypad(stdscr, true);
+
+    ::start_color();
+    ::use_default_colors();
+    ::init_pair((int)color::message,   COLOR_YELLOW, -1);
+    ::init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
 }
 
-void draw_text(buffer buf, coord size)
+key_code tui::read_key()
 {
-    using namespace std;
-    attrset(A_NORMAL);
-    int col, row;
-    getyx(stdscr, col, row);
-    auto str      = std::wstring{};
-    auto first_ln = begin(buf.content) +
-        min(buf.scroll.row, (index)buf.content.size());
-    auto last_ln  = begin(buf.content) +
-        min(size.row + buf.scroll.row, (index)buf.content.size());
-
-    coord starts, ends;
-    auto has_selection = bool(buf.selection_start);
-    if (has_selection) {
-        std::tie(starts, ends) = selected_region(buf);
-        starts.row -= buf.scroll.row;
-        ends.row   -= buf.scroll.row;
-    }
-
-    immer::for_each(first_ln, last_ln, [&] (auto ln) {
-        str.clear();
-        display_line_fill(ln, buf.scroll.col + col, size.col, str);
-        move(row, col);
-        if (has_selection) {
-            if (starts.row == ends.row && starts.row == row) {
-                addnwstr(str.c_str(), starts.col);
-                attron(COLOR_PAIR(color::selection));
-                addnwstr(str.c_str() + starts.col, ends.col - starts.col);
-                attroff(COLOR_PAIR(color::selection));
-                addnwstr(str.c_str() + ends.col, str.size() - ends.col);
-            } else if (starts.row == row) {
-                addnwstr(str.c_str(), starts.col);
-                attron(COLOR_PAIR(color::selection));
-                addnwstr(str.c_str() + starts.col, str.size() - starts.col);
-                hline(' ', size.col);
-                attroff(COLOR_PAIR(color::selection));
-            } else if (ends.row == row) {
-                attron(COLOR_PAIR(color::selection));
-                addnwstr(str.c_str(), ends.col);
-                attroff(COLOR_PAIR(color::selection));
-                addnwstr(str.c_str() + ends.col, str.size() - ends.col);
-            } else if (starts.row < row && ends.row > row) {
-                attron(COLOR_PAIR(color::selection));
-                addwstr(str.c_str());
-                hline(' ', size.col);
-                attroff(COLOR_PAIR(color::selection));
-            } else {
-                addwstr(str.c_str());
-            }
-        } else {
-            addwstr(str.c_str());
-        }
-        row++;
-    });
+    auto key = wint_t{};
+    auto res = ::wget_wch(win_.get(), &key);
+    return {res, key};
 }
 
-void draw_mode_line(const buffer& buffer, int maxcol)
+coord tui::size()
 {
-    attrset(A_REVERSE);
-    auto dirty_mark = is_dirty(buffer) ? "**" : "--";
-    printw(" %s %s  (%d, %d)",
-           dirty_mark,
-           buffer.from.name.get().c_str(),
-           buffer.cursor.col,
-           buffer.cursor.row);
-    hline(' ', maxcol);
+    int maxrow, maxcol;
+    getmaxyx(stdscr, maxrow, maxcol);
+    return {maxrow, maxcol};
 }
 
-void draw_message(const message& msg)
+void tui::cleanup_fn::operator() (WINDOW* win) const
 {
-    attrset(A_NORMAL);
-    attron(COLOR_PAIR(color::message));
-    addstr("message: ");
-    addstr(msg.content.get().c_str());
-    attroff(COLOR_PAIR(color::message));
+    if (win) ::endwin();
 }
-
-void draw_text_cursor(const buffer& buf, coord window_size)
-{
-    auto cursor = actual_display_cursor(buf);
-    move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);
-    curs_set(cursor.col >= buf.scroll.col &&
-             cursor.row >= buf.scroll.row &&
-             cursor.col < buf.scroll.col + window_size.col &&
-             cursor.row < buf.scroll.row + window_size.row);
-}
-
-void draw(const application& app, coord size)
-{
-    erase();
-
-    move(0, 0);
-    draw_text(app.current, editor_size(size));
-
-    move(size.row, 0);
-    draw_mode_line(app.current, size.col);
-
-    if (!app.messages.empty()) {
-        move(size.row - 1, 0);
-        draw_message(app.messages.back());
-    }
-
-    draw_text_cursor(app.current, size);
-    refresh();
-}
-
-} // anonymous namespace
 
 int main(int argc, char* argv[])
 {

@@ -20,29 +20,19 @@
 
 #pragma once
 
-#include <ewig/coord.hpp>
-#include <ewig/keys.hpp>
-
-struct _win_st;
+#include <ewig/application.hpp>
 
 namespace ewig {
 
-struct tui
+enum class color
 {
-    tui();
-
-    key_code read_key();
-    coord size();
-
-private:
-    struct cleanup_fn
-    {
-        void operator() (_win_st* win) const;
-    };
-
-    std::unique_ptr<_win_st, cleanup_fn> win_;
+    message = 1,
+    selection,
 };
 
-int main(int argc, char* argv[]);
+void draw(const application& app, coord size);
+void draw_text(const buffer& buf, coord size);
+void draw_mode_line(const buffer& buffer, index maxcol);
+void draw_message(const message& msg);
 
 } // namespace ewig

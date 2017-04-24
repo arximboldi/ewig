@@ -106,7 +106,7 @@ boost::optional<application> handle_key(application state, key_code key, coord s
     } else if (key_seq{key} != key::ctrl('[')) {
         using std::get;
         auto is_single_char = state.input.size() == 1;
-        if (is_single_char && get<0>(key) == OK && !std::iscntrl(get<1>(key))) {
+        if (is_single_char && !get<0>(key) && !std::iscntrl(get<1>(key))) {
             auto result = eval_command(state, "insert", size);
             return optional_map(result, clear_input);
         } else {
