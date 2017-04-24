@@ -104,14 +104,6 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::alt('w')),  "copy"},
 });
 
-coord get_editor_size()
-{
-    int maxrow, maxcol;
-    getmaxyx(stdscr, maxrow, maxcol);
-    // make space for minibuffer and modeline
-    return {maxrow - 2, maxcol};
-}
-
 // Fills the string `str` with the display contents of the line `ln`
 // between the display columns `first_col` and `first_col + num_col`.
 // It takes into account tabs, expanding them correctly.
@@ -225,19 +217,18 @@ void draw_text_cursor(const buffer& buf, coord window_size)
              cursor.row < buf.scroll.row + window_size.row);
 }
 
-void draw(const application& app)
+void draw(const application& app, coord size)
 {
-    auto size = get_editor_size();
     erase();
 
     move(0, 0);
-    draw_text(app.current, size);
+    draw_text(app.current, editor_size(size));
 
     move(size.row, 0);
     draw_mode_line(app.current, size.col);
 
     if (!app.messages.empty()) {
-        move(size.row + 1, 0);
+        move(size.row - 1, 0);
         draw_message(app.messages.back());
     }
 
@@ -257,10 +248,10 @@ int main(int argc, char* argv[])
 
     auto state = application{load_buffer(argv[1]), key_map_emacs};
     auto ui = tui{};
-    draw(state);
+    draw(state, ui.size());
     while (auto new_state = handle_key(state, ui.read_key(), ui.size())) {
         state = *new_state;
-        draw(state);
+        draw(state, ui.size());
     }
 
     return 0;
