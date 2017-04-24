@@ -76,8 +76,8 @@ command paste_command(Fn fn)
 template <typename Fn>
 command scroll_command(Fn fn)
 {
-    return [=] (application state, coord wsize) {
-        state.current = fn(state.current, wsize);
+    return [=] (application state, coord size) {
+        state.current = fn(state.current, editor_size(size));
         return state;
     };
 }

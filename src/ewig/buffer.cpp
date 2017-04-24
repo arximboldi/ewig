@@ -99,11 +99,11 @@ buffer page_up(buffer buf, coord size)
     if (buf.scroll.row > size.row) {
         buf.scroll.row -= size.row;
         if (buf.cursor.row >= buf.scroll.row + size.row)
-            buf.cursor.row = buf.scroll.row + size.row - 1;
+            buf.cursor.row = buf.scroll.row + size.row - 2;
     } else if (buf.scroll.row > 0) {
         buf.scroll.row = 0;
         if (buf.cursor.row >= size.row)
-            buf.cursor.row = size.row - 1;
+            buf.cursor.row = size.row - 2;
     } else {
         buf.cursor.row = 0;
     }
@@ -115,7 +115,7 @@ buffer page_down(buffer buf, coord size)
     if (buf.scroll.row + size.row < (index)buf.content.size()) {
         buf.scroll.row += size.row;
         if (buf.cursor.row < buf.scroll.row)
-            buf.cursor.row = buf.scroll.row;
+            buf.cursor.row = buf.scroll.row + 1;
     } else {
         buf.cursor.row = buf.content.size();
     }

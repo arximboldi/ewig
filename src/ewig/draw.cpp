@@ -130,14 +130,15 @@ void draw(const application& app, coord size)
 {
     erase();
 
+    size = editor_size(size);
     ::move(0, 0);
-    draw_text(app.current, editor_size(size));
+    draw_text(app.current, size);
 
-    ::move(size.row - 2, 0);
+    ::move(size.row, 0);
     draw_mode_line(app.current, size.col);
 
     if (!app.messages.empty()) {
-        ::move(size.row - 1, 0);
+        ::move(size.row + 1, 0);
         draw_message(app.messages.back());
     }
 
