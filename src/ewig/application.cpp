@@ -123,7 +123,7 @@ eval_command(application state, const std::string& cmd, coord size)
     if (it != global_commands.end()) {
         return it->second(put_message(state, "calling command: "s + cmd), size);
     } else {
-        return put_message(state, "unknown_command: "s + cmd);
+        return put_message(state, "unknown command: "s + cmd);
     }
 }
 
