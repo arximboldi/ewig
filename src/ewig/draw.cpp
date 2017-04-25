@@ -111,7 +111,7 @@ void draw_message(const message& msg)
 {
     attrset(A_NORMAL);
     ::attron(COLOR_PAIR(color::message));
-    ::addstr("message: ");
+    ::addstr(" ");
     ::addstr(msg.content.get().c_str());
     ::attroff(COLOR_PAIR(color::message));
 }
