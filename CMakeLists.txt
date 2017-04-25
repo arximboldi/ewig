@@ -23,3 +23,5 @@ add_executable(ewig
   src/main.cpp
   )
 target_link_libraries(ewig -lncursesw)
+
+install(TARGETS ewig DESTINATION bin)
