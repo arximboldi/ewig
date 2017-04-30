@@ -8,8 +8,6 @@ using [immutable data-structures](https://sinusoid.es/immer/) in C++.
 The code is written in a simple style to showcase a value-based
 functional architecture.  We invite you to [study the code](https://github.com/arximboldi/ewig/tree/master/src/ewig).
 
----
-
 <p align="center">
   <a href="https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt">
     <img src="https://cdn.rawgit.com/arximboldi/ewig/9ffbe95f/doc/ewig.gif">
