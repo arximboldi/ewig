@@ -10,7 +10,11 @@ functional architecture.  We invite you to [study the code](https://github.com/a
 
 ---
 
-[![asciicast](https://cdn.rawgit.com/arximboldi/ewig/9ffbe95f/doc/ewig.gif)](https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt)
+<p align="center">
+  <a href="https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt">
+    <img src="https://cdn.rawgit.com/arximboldi/ewig/9ffbe95f/doc/ewig.gif">
+  </a>
+</p>
 
 Try it out
 ----------
