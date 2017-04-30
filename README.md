@@ -76,9 +76,6 @@ const auto key_map_emacs = make_key_map(
 License
 -------
 
-License
--------
-
 This software is licensed under the
 [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
