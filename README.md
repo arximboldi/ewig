@@ -10,7 +10,7 @@ functional architecture.  We invite you to [study the code](https://github.com/a
 
 ---
 
-[![asciicast](https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt.png)](https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt)
+[![asciicast](https://cdn.rawgit.com/arximboldi/ewig/9ffbe95f/doc/ewig.gif)](https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt)
 
 Try it out
 ----------
