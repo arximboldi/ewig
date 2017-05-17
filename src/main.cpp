@@ -19,8 +19,16 @@
 //
 
 #include <ewig/tui.hpp>
+#include <iostream>
 
 int main(int argc, char* argv[])
 {
-    return ewig::main(argc, argv);
+    std::locale::global(std::locale(""));
+
+    if (argc != 2) {
+        std::cerr << "give me a file name" << std::endl;
+        return 1;
+    }
+
+    return ewig::run(argv[1]);
 }

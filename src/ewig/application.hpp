@@ -42,6 +42,12 @@ struct application
     immer::vector<message> messages;
 };
 
+struct event
+{
+    key_code key;
+    coord size;
+};
+
 using command = std::function<boost::optional<application>(application, coord)>;
 
 application save(application app, coord);
@@ -52,7 +58,7 @@ application put_clipboard(application state, text content);
 boost::optional<application> eval_command(application state, const std::string& cmd, coord editor_size);
 
 application clear_input(application state);
-boost::optional<application> handle_key(application state, key_code key, coord size);
+boost::optional<application> update(application state, event ev);
 
 application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);

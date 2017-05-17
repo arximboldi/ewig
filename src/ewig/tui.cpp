@@ -95,23 +95,23 @@ coord tui::size()
     return {maxrow, maxcol};
 }
 
+event tui::next()
+{
+    return {read_key(), size()};
+}
+
 void tui::cleanup_fn::operator() (WINDOW* win) const
 {
     if (win) ::endwin();
 }
 
-int main(int argc, char* argv[])
+int run(const char* fname)
 {
-    std::locale::global(std::locale(""));
-    if (argc != 2) {
-        std::cerr << "give me a file name" << std::endl;
-        return 1;
-    }
-
-    auto state = application{load_buffer(argv[1]), key_map_emacs};
+    auto state = application{load_buffer(fname), key_map_emacs};
     auto ui = tui{};
     draw(state, ui.size());
-    while (auto new_state = handle_key(state, ui.read_key(), ui.size())) {
+
+    while (auto new_state = update(state, ui.next())) {
         state = *new_state;
         draw(state, ui.size());
     }

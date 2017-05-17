@@ -93,21 +93,21 @@ application clear_input(application state)
     return state;
 }
 
-boost::optional<application> handle_key(application state, key_code key, coord size)
+boost::optional<application> update(application state, event ev)
 {
-    state.input = state.input.push_back(key);
+    state.input = state.input.push_back(ev.key);
     const auto& map = state.keys.get();
     auto it = map.find(state.input);
     if (it != map.end()) {
         if (!it->second.empty()) {
-            auto result = eval_command(state, it->second, size);
+            auto result = eval_command(state, it->second, ev.size);
             return optional_map(result, clear_input);
         }
-    } else if (key_seq{key} != key::ctrl('[')) {
+    } else if (key_seq{ev.key} != key::ctrl('[')) {
         using std::get;
         auto is_single_char = state.input.size() == 1;
-        if (is_single_char && !get<0>(key) && !std::iscntrl(get<1>(key))) {
-            auto result = eval_command(state, "insert", size);
+        if (is_single_char && !get<0>(ev.key) && !std::iscntrl(get<1>(ev.key))) {
+            auto result = eval_command(state, "insert", ev.size);
             return optional_map(result, clear_input);
         } else {
             return clear_input(put_message(state, "unbound key sequence"));

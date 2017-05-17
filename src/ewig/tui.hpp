@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <ewig/coord.hpp>
-#include <ewig/keys.hpp>
+#include <ewig/application.hpp>
 
 struct _win_st;
 
@@ -31,6 +30,7 @@ struct tui
 {
     tui();
 
+    event next();
     key_code read_key();
     coord size();
 
@@ -43,6 +43,6 @@ private:
     std::unique_ptr<_win_st, cleanup_fn> win_;
 };
 
-int main(int argc, char* argv[]);
+int run(const char* fname);
 
 } // namespace ewig
