@@ -3,7 +3,7 @@
   <img src="https://cdn.rawgit.com/arximboldi/ewig/36d00237/doc/logo-front.svg">
 </p>
 
-Ewig is a text editor written
+**ewig** is a text editor written
 using [immutable data-structures](https://sinusoid.es/immer/) in C++.
 
 The code is written in a simple style to showcase a value-based
