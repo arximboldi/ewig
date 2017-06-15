@@ -7,7 +7,10 @@
 using [immutable data-structures](https://sinusoid.es/immer/) in C++.
 
 The code is written in a simple style to showcase a value-based
-functional architecture.  We invite you to [study the code](https://github.com/arximboldi/ewig/tree/master/src/ewig).
+functional architecture.  We invite you to
+[study the code](https://github.com/arximboldi/ewig/tree/master/src/ewig).
+Learn more in the **C++Now'17 Talk**:
+_[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0UAC8)_.
 
 <p align="center">
   <a href="https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt">
