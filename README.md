@@ -24,7 +24,7 @@ Then type:
 #### Prepare
 ```
 git submodule update --recursive --init
-make build
+mkdir build
 cd build
 ```
 
