@@ -22,7 +22,6 @@
 
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
-#include <boost/optional.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -323,8 +322,7 @@ buffer insert_text(buffer buf, text paste)
 
 text selected_text(buffer buf)
 {
-    coord starts, ends;
-    std::tie(starts, ends) = selected_region(buf);
+    auto [starts, ends] = selected_region(buf);
     if (starts == ends)
         return {};
     else
@@ -346,8 +344,7 @@ text selected_text(buffer buf)
 std::pair<buffer, text> cut(buffer buf)
 {
     auto selection = selected_text(buf);
-    auto starts = coord{}, ends = coord{};
-    std::tie(starts, ends) = selected_region(buf);
+    auto [starts, ends] = selected_region(buf);
     if (starts != ends) {
         if (starts.row != ends.row) {
             auto content =
@@ -370,14 +367,14 @@ std::pair<buffer, text> cut(buffer buf)
         buf.cursor = starts;
     }
 
-    buf.selection_start = boost::none;
+    buf.selection_start = std::nullopt;
     return {buf, selection};
 }
 
 std::pair<buffer, text> copy(buffer buf)
 {
     auto result = selected_text(buf);
-    buf.selection_start = boost::none;
+    buf.selection_start = std::nullopt;
     return {buf, result};
 }
 
@@ -397,7 +394,7 @@ buffer select_whole_buffer(buffer buf)
 
 buffer clear_selection(buffer buf)
 {
-    buf.selection_start = boost::none;
+    buf.selection_start = std::nullopt;
     return buf;
 }
 
@@ -434,7 +431,7 @@ buffer record(buffer before, buffer after)
     if (before.content != after.content) {
         after.history = after.history.push_back({before.content, before.cursor});
         if (before.history_pos == after.history_pos)
-            after.history_pos = boost::none;
+            after.history_pos = std::nullopt;
     }
     return after;
 }

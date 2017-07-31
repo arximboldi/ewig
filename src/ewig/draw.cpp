@@ -70,8 +70,7 @@ void draw_text(const buffer& buf, coord size)
     auto last_ln  = begin(buf.content) + min(size.row + buf.scroll.row,
                                              (index)buf.content.size());
 
-    coord starts, ends;
-    std::tie(starts, ends) = selected_region(buf);
+    auto [starts, ends] = selected_region(buf);
     starts.row -= buf.scroll.row;
     ends.row   -= buf.scroll.row;
 

@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/arximboldi/ewig.svg?branch=master)](https://travis-ci.org/arximboldi/ewig)
 
 <p align="center">
   <img src="https://cdn.rawgit.com/arximboldi/ewig/36d00237/doc/logo-front.svg">
@@ -11,6 +12,8 @@ functional architecture.  We invite you to
 [study the code](https://github.com/arximboldi/ewig/tree/master/src/ewig).
 Learn more in the **C++Now'17 Talk**:
 _[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0UAC8)_.
+
+---
 
 <p align="center">
   <a href="https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt">

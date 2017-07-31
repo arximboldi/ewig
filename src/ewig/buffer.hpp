@@ -26,7 +26,7 @@
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
 
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace ewig {
 
@@ -51,9 +51,9 @@ struct buffer
     text content;
     coord cursor;
     coord scroll;
-    boost::optional<coord> selection_start;
+    std::optional<coord> selection_start;
     immer::vector<snapshot> history;
-    boost::optional<std::size_t> history_pos;
+    std::optional<std::size_t> history_pos;
 };
 
 constexpr auto tab_width = 8;

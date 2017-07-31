@@ -24,8 +24,8 @@
 
 #include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/functional/hash.hpp>
-#include <boost/optional.hpp>
 
+#include <optional>
 #include <tuple>
 
 namespace std
@@ -54,7 +54,7 @@ struct hash<immer::vector<T>>
 namespace ewig {
 
 template <typename T, typename Fn>
-boost::optional<T> optional_map(boost::optional<T> v, Fn&& fn)
+std::optional<T> optional_map(std::optional<T> v, Fn&& fn)
 {
     return v ? std::forward<Fn>(fn)(std::move(*v)) : v;
 }
