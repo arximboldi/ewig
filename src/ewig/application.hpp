@@ -48,17 +48,17 @@ struct event
     coord size;
 };
 
-using command = std::function<boost::optional<application>(application, coord)>;
+using command = std::function<std::optional<application>(application, coord)>;
 
 application save(application app, coord);
 application paste(application app, coord size);
 application put_message(application state, std::string str);
 application put_clipboard(application state, text content);
 
-boost::optional<application> eval_command(application state, const std::string& cmd, coord editor_size);
+std::optional<application> eval_command(application state, const std::string& cmd, coord editor_size);
 
 application clear_input(application state);
-boost::optional<application> update(application state, event ev);
+std::optional<application> update(application state, event ev);
 
 application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);

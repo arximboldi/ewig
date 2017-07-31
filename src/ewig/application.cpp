@@ -47,7 +47,7 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   [](auto, auto) { return boost::none; }},
+    {"quit",                   [](auto, auto) { return std::nullopt; }},
     {"save",                   save},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
@@ -93,7 +93,7 @@ application clear_input(application state)
     return state;
 }
 
-boost::optional<application> update(application state, event ev)
+std::optional<application> update(application state, event ev)
 {
     state.input = state.input.push_back(ev.key);
     const auto& map = state.keys.get();
@@ -116,7 +116,7 @@ boost::optional<application> update(application state, event ev)
     return state;
 }
 
-boost::optional<application>
+std::optional<application>
 eval_command(application state, const std::string& cmd, coord size)
 {
     auto it = global_commands.find(cmd);
