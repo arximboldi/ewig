@@ -322,8 +322,7 @@ buffer insert_text(buffer buf, text paste)
 
 text selected_text(buffer buf)
 {
-    coord starts, ends;
-    std::tie(starts, ends) = selected_region(buf);
+    auto [starts, ends] = selected_region(buf);
     if (starts == ends)
         return {};
     else
@@ -345,8 +344,7 @@ text selected_text(buffer buf)
 std::pair<buffer, text> cut(buffer buf)
 {
     auto selection = selected_text(buf);
-    auto starts = coord{}, ends = coord{};
-    std::tie(starts, ends) = selected_region(buf);
+    auto [starts, ends] = selected_region(buf);
     if (starts != ends) {
         if (starts.row != ends.row) {
             auto content =
