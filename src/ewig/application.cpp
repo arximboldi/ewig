@@ -26,6 +26,11 @@ namespace ewig {
 
 using commands = std::unordered_map<std::string, command>;
 
+constexpr auto quit = [] (auto m, auto)
+{
+    return std::pair{m, do_stop};
+};
+
 static const auto global_commands = commands
 {
     {"insert",                 key_command(insert_char)},
@@ -47,7 +52,7 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   [](auto, auto) { return std::nullopt; }},
+    {"quit",                   quit},
     {"save",                   save},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
@@ -93,7 +98,7 @@ application clear_input(application state)
     return state;
 }
 
-std::optional<application> update(application state, event ev)
+result<application, event> update(application state, event ev)
 {
     state.input = state.input.push_back(ev.key);
     const auto& map = state.keys.get();
@@ -101,14 +106,14 @@ std::optional<application> update(application state, event ev)
     if (it != map.end()) {
         if (!it->second.empty()) {
             auto result = eval_command(state, it->second, ev.size);
-            return optional_map(result, clear_input);
+            return {clear_input(result.first), result.second};
         }
     } else if (key_seq{ev.key} != key::ctrl('[')) {
         using std::get;
         auto is_single_char = state.input.size() == 1;
         if (is_single_char && !get<0>(ev.key) && !std::iscntrl(get<1>(ev.key))) {
             auto result = eval_command(state, "insert", ev.size);
-            return optional_map(result, clear_input);
+            return {clear_input(result.first), result.second};
         } else {
             return clear_input(put_message(state, "unbound key sequence: " +
                                            to_string(state.input)));
@@ -117,8 +122,9 @@ std::optional<application> update(application state, event ev)
     return state;
 }
 
-std::optional<application>
-eval_command(application state, const std::string& cmd, coord size)
+result<application, event> eval_command(application state,
+                                        const std::string& cmd,
+                                        coord size)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {
