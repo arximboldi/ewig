@@ -110,7 +110,8 @@ std::optional<application> update(application state, event ev)
             auto result = eval_command(state, "insert", ev.size);
             return optional_map(result, clear_input);
         } else {
-            return clear_input(put_message(state, "unbound key sequence"));
+            return clear_input(put_message(state, "unbound key sequence: " +
+                                           to_string(state.input)));
         }
     }
     return state;

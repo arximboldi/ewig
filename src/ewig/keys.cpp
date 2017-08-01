@@ -46,6 +46,23 @@ key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args
     return map;
 }
 
+std::string to_string(const key_code& k)
+{
+    return "{"
+        + std::to_string(std::get<0>(k)) + " "
+        + ::key_name(std::get<1>(k))
+        + "}";
+}
+
+std::string to_string(const key_seq& keys)
+{
+    auto str = std::string{"["};
+    immer::for_each(keys, [&] (auto&& key) {
+        str += " " + to_string(key);
+    });
+    return std::move(str) + " ]";
+}
+
 namespace key {
 
 namespace {

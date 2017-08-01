@@ -42,6 +42,9 @@ using key_map  = immer::box<std::unordered_map<key_seq, std::string>>;
 // sequences.
 key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>>);
 
+std::string to_string(const key_code& k);
+std::string to_string(const key_seq& keys);
+
 namespace key {
 
 enum special
