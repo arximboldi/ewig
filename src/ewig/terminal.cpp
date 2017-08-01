@@ -34,39 +34,6 @@ using namespace std::string_literals;
 
 namespace ewig {
 
-namespace {
-
-const auto key_map_emacs = make_key_map(
-{
-    {key::seq(key::up),        "move-up"},
-    {key::seq(key::down),      "move-down"},
-    {key::seq(key::left),      "move-left"},
-    {key::seq(key::right),     "move-right"},
-    {key::seq(key::page_down), "page-down"},
-    {key::seq(key::page_up),   "page-up"},
-    {key::seq(key::backspace), "delete-char"},
-    {key::seq(key::delete_),   "delete-char-right"},
-    {key::seq(key::home),      "move-beginning-of-line"},
-    {key::seq(key::ctrl('a')), "move-beginning-of-line"},
-    {key::seq(key::end),       "move-end-of-line"},
-    {key::seq(key::ctrl('e')), "move-end-of-line"},
-    {key::seq(key::ctrl('i')), "insert-tab"}, // tab
-    {key::seq(key::ctrl('j')), "new-line"}, // enter
-    {key::seq(key::ctrl('k')), "kill-line"},
-    {key::seq(key::ctrl('w')), "cut"},
-    {key::seq(key::ctrl('y')), "paste"},
-    {key::seq(key::ctrl('@')), "start-selection"}, // ctrl-space
-    {key::seq(key::ctrl('_')), "undo"},
-    {key::seq(key::ctrl('x'), key::ctrl('C')), "quit"},
-    {key::seq(key::ctrl('x'), key::ctrl('S')), "save"},
-    {key::seq(key::ctrl('x'), 'h'), "select-whole-buffer"},
-    {key::seq(key::ctrl('x'), '['), "move-beginning-buffer"},
-    {key::seq(key::ctrl('x'), ']'), "move-end-buffer"},
-    {key::seq(key::alt('w')),  "copy"},
-});
-
-} // anonymous
-
 terminal::terminal(boost::asio::io_service& serv)
     : win_{initscr()}
     , input_{serv, ::dup(STDIN_FILENO)}
@@ -120,25 +87,6 @@ void terminal::next_()
 void terminal::cleanup_fn::operator() (WINDOW* win) const
 {
     if (win) ::endwin();
-}
-
-int run(const char* fname)
-{
-    auto state = application{load_buffer(fname), key_map_emacs};
-    auto serv  = boost::asio::io_service{};
-    auto term  = terminal{serv};
-    draw(state, term.size());
-    term.start([&] (auto ev) {
-        auto new_state = update(state, ev);
-        if (new_state) {
-            state = *new_state;
-            draw(state, term.size());
-        } else {
-            term.stop();
-        }
-    });
-    serv.run();
-    return 0;
 }
 
 } // namespace ewig

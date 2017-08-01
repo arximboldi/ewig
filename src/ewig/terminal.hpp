@@ -53,6 +53,4 @@ private:
     event_handler handler_;
 };
 
-int run(const char* fname);
-
 } // namespace ewig
