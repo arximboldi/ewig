@@ -22,17 +22,23 @@
 
 #include <ewig/application.hpp>
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
+
 struct _win_st;
 
 namespace ewig {
 
-struct tui
+struct terminal
 {
-    tui();
+    using event_handler = std::function<void(event)>;
 
-    event next();
-    key_code read_key();
+    terminal(boost::asio::io_service& serv);
+
     coord size();
+
+    void start(event_handler ev);
+    void stop();
 
 private:
     struct cleanup_fn
@@ -40,7 +46,11 @@ private:
         void operator() (_win_st* win) const;
     };
 
+    void next_();
+
     std::unique_ptr<_win_st, cleanup_fn> win_;
+    boost::asio::posix::stream_descriptor input_;
+    event_handler handler_;
 };
 
 int run(const char* fname);

@@ -18,8 +18,10 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "ewig/tui.hpp"
+#include "ewig/terminal.hpp"
 #include "ewig/draw.hpp"
+
+#include <boost/asio/read.hpp>
 
 #include <iostream>
 
@@ -65,8 +67,9 @@ const auto key_map_emacs = make_key_map(
 
 } // anonymous
 
-tui::tui()
+terminal::terminal(boost::asio::io_service& serv)
     : win_{initscr()}
+    , input_{serv, ::dup(STDIN_FILENO)}
 {
     if (win_.get() != ::stdscr)
         throw std::runtime_error{"error while initializing ncurses"};
@@ -81,26 +84,40 @@ tui::tui()
     ::init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
 }
 
-key_code tui::read_key()
-{
-    auto key = wint_t{};
-    auto res = ::wget_wch(win_.get(), &key);
-    return {res, key};
-}
-
-coord tui::size()
+coord terminal::size()
 {
     int maxrow, maxcol;
     getmaxyx(stdscr, maxrow, maxcol);
     return {maxrow, maxcol};
 }
 
-event tui::next()
+void terminal::start(event_handler ev)
 {
-    return {read_key(), size()};
+    assert(!handler_);
+    handler_ = std::move(ev);
+    next_();
 }
 
-void tui::cleanup_fn::operator() (WINDOW* win) const
+void terminal::stop()
+{
+    input_.cancel();
+    handler_ = {};
+}
+
+void terminal::next_()
+{
+    using namespace boost::asio;
+    input_.async_read_some(null_buffers(), [&] (auto ec, auto) {
+        if (!ec) {
+            auto key = wint_t{};
+            auto res = ::wget_wch(win_.get(), &key);
+            next_();
+            handler_({{res, key}, size()});
+        }
+    });
+}
+
+void terminal::cleanup_fn::operator() (WINDOW* win) const
 {
     if (win) ::endwin();
 }
@@ -108,14 +125,19 @@ void tui::cleanup_fn::operator() (WINDOW* win) const
 int run(const char* fname)
 {
     auto state = application{load_buffer(fname), key_map_emacs};
-    auto ui = tui{};
-    draw(state, ui.size());
-
-    while (auto new_state = update(state, ui.next())) {
-        state = *new_state;
-        draw(state, ui.size());
-    }
-
+    auto serv  = boost::asio::io_service{};
+    auto term  = terminal{serv};
+    draw(state, term.size());
+    term.start([&] (auto ev) {
+        auto new_state = update(state, ev);
+        if (new_state) {
+            state = *new_state;
+            draw(state, term.size());
+        } else {
+            term.stop();
+        }
+    });
+    serv.run();
     return 0;
 }
 

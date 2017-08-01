@@ -14,7 +14,7 @@ add_executable(ewig
   src/ewig/buffer.cpp
   src/ewig/draw.cpp
   src/ewig/keys.cpp
-  src/ewig/tui.cpp
+  src/ewig/terminal.cpp
   src/main.cpp)
 target_include_directories(ewig PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
