@@ -56,6 +56,7 @@ enum special
     home,
     end,
     backspace,
+    backspace_,
     delete_,
     page_up,
     page_down,
