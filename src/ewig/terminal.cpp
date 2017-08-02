@@ -58,7 +58,7 @@ coord terminal::size()
     return {maxrow, maxcol};
 }
 
-void terminal::start(event_handler ev)
+void terminal::start(action_handler ev)
 {
     assert(!handler_);
     handler_ = std::move(ev);

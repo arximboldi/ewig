@@ -20,6 +20,8 @@
 
 #include "ewig/application.hpp"
 
+#include <scelta.hpp>
+
 using namespace std::string_literals;
 
 namespace ewig {
@@ -98,33 +100,39 @@ application clear_input(application state)
     return state;
 }
 
-result<application, event> update(application state, event ev)
+result<application, action> update(application state, action ev)
 {
-    state.input = state.input.push_back(ev.key);
-    const auto& map = state.keys.get();
-    auto it = map.find(state.input);
-    if (it != map.end()) {
-        if (!it->second.empty()) {
-            auto result = eval_command(state, it->second, ev.size);
-            return {clear_input(result.first), result.second};
-        }
-    } else if (key_seq{ev.key} != key::ctrl('[')) {
-        using std::get;
-        auto is_single_char = state.input.size() == 1;
-        if (is_single_char && !get<0>(ev.key) && !std::iscntrl(get<1>(ev.key))) {
-            auto result = eval_command(state, "insert", ev.size);
-            return {clear_input(result.first), result.second};
-        } else {
-            return clear_input(put_message(state, "unbound key sequence: " +
-                                           to_string(state.input)));
-        }
-    }
-    return state;
+    using result_t = result<application, action>;
+
+    return scelta::match(
+        [&](const terminal_action& ev) -> result_t {
+            state.input = state.input.push_back(ev.key);
+            const auto& map = state.keys.get();
+            auto it = map.find(state.input);
+            if (it != map.end()) {
+                if (!it->second.empty()) {
+                    auto result = eval_command(state, it->second, ev.size);
+                    return {clear_input(result.first), result.second};
+                }
+            } else if (key_seq{ev.key} != key::ctrl('[')) {
+                using std::get;
+                auto is_single_char = state.input.size() == 1;
+                auto [kres, kkey] = ev.key;
+                if (is_single_char && !kres && !std::iscntrl(kkey)) {
+                    auto result = eval_command(state, "insert", ev.size);
+                    return {clear_input(result.first), result.second};
+                } else {
+                    return clear_input(put_message(state, "unbound key sequence: " +
+                                                   to_string(state.input)));
+                }
+            }
+            return state;
+        })(ev);
 }
 
-result<application, event> eval_command(application state,
-                                        const std::string& cmd,
-                                        coord size)
+result<application, action> eval_command(application state,
+                                         const std::string& cmd,
+                                         coord size)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {

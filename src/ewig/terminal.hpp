@@ -31,13 +31,13 @@ namespace ewig {
 
 struct terminal
 {
-    using event_handler = std::function<void(event)>;
+    using action_handler = std::function<void(terminal_action)>;
 
     terminal(boost::asio::io_service& serv);
 
     coord size();
 
-    void start(event_handler ev);
+    void start(action_handler ev);
     void stop();
 
 private:
@@ -50,7 +50,7 @@ private:
 
     std::unique_ptr<_win_st, cleanup_fn> win_;
     boost::asio::posix::stream_descriptor input_;
-    event_handler handler_;
+    action_handler handler_;
 };
 
 } // namespace ewig

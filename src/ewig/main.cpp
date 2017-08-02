@@ -62,7 +62,7 @@ int run(const char* fname)
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
     auto view = [&] (auto&& state) { draw(state, term.size()); };
-    auto st   = store<application, event>{serv, init, update, view};
+    auto st   = store<application, action>{serv, init, update, view};
     term.start([&] (auto ev) { st.dispatch (ev); });
     serv.run();
     return 0;

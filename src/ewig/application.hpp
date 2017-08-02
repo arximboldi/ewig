@@ -25,8 +25,18 @@
 #include <ewig/store.hpp>
 
 #include <ctime>
+#include <variant>
 
 namespace ewig {
+
+struct terminal_action
+{
+    key_code key;
+    coord size;
+};
+
+using action = std::variant<
+    terminal_action>;
 
 struct message
 {
@@ -43,13 +53,7 @@ struct application
     immer::vector<message> messages;
 };
 
-struct event
-{
-    key_code key;
-    coord size;
-};
-
-using command = std::function<result<application, event>(application, coord)>;
+using command = std::function<result<application, action>(application, coord)>;
 
 application save(application app, coord);
 application paste(application app, coord size);
@@ -57,10 +61,10 @@ application put_message(application state, std::string str);
 application put_clipboard(application state, text content);
 application clear_input(application state);
 
-result<application, event> eval_command(application state,
+result<application, action> eval_command(application state,
                                         const std::string& cmd,
                                         coord editor_size);
-result<application, event> update(application state, event ev);
+result<application, action> update(application state, action ev);
 
 application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);
