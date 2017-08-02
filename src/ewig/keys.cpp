@@ -46,6 +46,23 @@ key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args
     return map;
 }
 
+std::string to_string(const key_code& k)
+{
+    return "{"
+        + std::to_string(std::get<0>(k)) + " "
+        + ::key_name(std::get<1>(k))
+        + "}";
+}
+
+std::string to_string(const key_seq& keys)
+{
+    auto str = std::string{"["};
+    immer::for_each(keys, [&] (auto&& key) {
+        str += " " + to_string(key);
+    });
+    return std::move(str) + " ]";
+}
+
 namespace key {
 
 namespace {
@@ -78,6 +95,7 @@ key_seq seq(special key)
     case home      : return {{KEY_CODE_YES, KEY_HOME}};
     case end       : return {{KEY_CODE_YES, KEY_END}};
     case backspace : return {{KEY_CODE_YES, KEY_BACKSPACE}};
+    case backspace_: return {{0, 127}};
     case delete_   : return {{KEY_CODE_YES, KEY_DC}};
     case page_up   : return {{KEY_CODE_YES, KEY_PPAGE}};
     case page_down : return {{KEY_CODE_YES, KEY_NPAGE}};

@@ -18,17 +18,39 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include <ewig/tui.hpp>
-#include <iostream>
+#pragma once
 
-int main(int argc, char* argv[])
+#include <ewig/application.hpp>
+
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
+
+struct _win_st;
+
+namespace ewig {
+
+struct terminal
 {
-    std::locale::global(std::locale(""));
+    using action_handler = std::function<void(terminal_action)>;
 
-    if (argc != 2) {
-        std::cerr << "give me a file name" << std::endl;
-        return 1;
-    }
+    terminal(boost::asio::io_service& serv);
 
-    return ewig::run(argv[1]);
-}
+    coord size();
+
+    void start(action_handler ev);
+    void stop();
+
+private:
+    struct cleanup_fn
+    {
+        void operator() (_win_st* win) const;
+    };
+
+    void next_();
+
+    std::unique_ptr<_win_st, cleanup_fn> win_;
+    boost::asio::posix::stream_descriptor input_;
+    action_handler handler_;
+};
+
+} // namespace ewig

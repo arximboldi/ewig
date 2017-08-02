@@ -20,11 +20,18 @@
 
 #include "ewig/application.hpp"
 
+#include <scelta.hpp>
+
 using namespace std::string_literals;
 
 namespace ewig {
 
 using commands = std::unordered_map<std::string, command>;
+
+constexpr auto quit = [] (auto m, auto)
+{
+    return std::pair{m, [] (auto&& ctx) { ctx.finish(); }};
+};
 
 static const auto global_commands = commands
 {
@@ -47,21 +54,23 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   [](auto, auto) { return std::nullopt; }},
+    {"quit",                   quit},
     {"save",                   save},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
-application save(application state, coord)
+result<application, action> save(application state, coord)
 {
-    if (is_dirty(state.current)) {
-        state.current = save_buffer(state.current);
-        return put_message(state, "file saved: "s +
-                           state.current.from.name.get());
-    } else {
+    if (!is_dirty(state.current)) {
         return put_message(state, "nothing to save");
+    } else if (effects_in_progress(state.current)) {
+        return put_message(state, "can't save while saving or loading the file");
+    } else {
+        auto [buffer, effect] = save_buffer(state.current);
+        state.current = buffer;
+        return {state, effect};
     }
 }
 
@@ -93,31 +102,50 @@ application clear_input(application state)
     return state;
 }
 
-std::optional<application> update(application state, event ev)
+result<application, action> update(application state, action ev)
 {
-    state.input = state.input.push_back(ev.key);
-    const auto& map = state.keys.get();
-    auto it = map.find(state.input);
-    if (it != map.end()) {
-        if (!it->second.empty()) {
-            auto result = eval_command(state, it->second, ev.size);
-            return optional_map(result, clear_input);
-        }
-    } else if (key_seq{ev.key} != key::ctrl('[')) {
-        using std::get;
-        auto is_single_char = state.input.size() == 1;
-        if (is_single_char && !get<0>(ev.key) && !std::iscntrl(get<1>(ev.key))) {
-            auto result = eval_command(state, "insert", ev.size);
-            return optional_map(result, clear_input);
-        } else {
-            return clear_input(put_message(state, "unbound key sequence"));
-        }
-    }
-    return state;
+    using result_t = result<application, action>;
+
+    return scelta::match(
+        [&](const buffer_action& ev) -> result_t
+        {
+            state.current = update_buffer(state.current, ev);
+            scelta::match(
+                [&](const save_done_action& act) {
+                    state = put_message(state, "saved: " + act.file.name.get());
+                },
+                [](auto&&) {})(ev);
+            return state;
+        },
+        [&](const terminal_action& ev) -> result_t
+        {
+            state.input = state.input.push_back(ev.key);
+            const auto& map = state.keys.get();
+            auto it = map.find(state.input);
+            if (it != map.end()) {
+                if (!it->second.empty()) {
+                    auto result = eval_command(state, it->second, ev.size);
+                    return {clear_input(result.first), result.second};
+                }
+            } else if (key_seq{ev.key} != key::ctrl('[')) {
+                using std::get;
+                auto is_single_char = state.input.size() == 1;
+                auto [kres, kkey] = ev.key;
+                if (is_single_char && !kres && !std::iscntrl(kkey)) {
+                    auto result = eval_command(state, "insert", ev.size);
+                    return {clear_input(result.first), result.second};
+                } else {
+                    return clear_input(put_message(state, "unbound key sequence: " +
+                                                   to_string(state.input)));
+                }
+            }
+            return state;
+        })(ev);
 }
 
-std::optional<application>
-eval_command(application state, const std::string& cmd, coord size)
+result<application, action> eval_command(application state,
+                                         const std::string& cmd,
+                                         coord size)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {

@@ -20,6 +20,8 @@
 
 #include "ewig/draw.hpp"
 
+#include <scelta.hpp>
+
 extern "C" {
 #include <ncursesw/ncurses.h>
 }
@@ -94,16 +96,27 @@ void draw_text(const buffer& buf, coord size)
     });
 }
 
-void draw_mode_line(const buffer& buffer, index maxcol)
+void draw_mode_line(const buffer& buf, index maxcol)
 {
     attrset(A_REVERSE);
-    auto dirty_mark = is_dirty(buffer) ? "**" : "--";
+    auto dirty_mark = is_dirty(buf) ? "**" : "--";
+    auto file_name = scelta::match([](auto&& f) { return f.name; })(buf.from);
     ::printw(" %s %s  (%d, %d)",
-             dirty_mark,
-             buffer.from.name.get().c_str(),
-             buffer.cursor.col,
-             buffer.cursor.row);
+            dirty_mark,
+            file_name.get().c_str(),
+            buf.cursor.col,
+            buf.cursor.row);
     ::hline(' ', maxcol);
+    scelta::match(
+        [&] (const saving_file& file) {
+            attron(A_BOLD);
+            auto str        = std::string{"saving..."};
+            auto progress   = (float)file.saved_lines / file.content.size();
+            auto percentage = int(progress * 100);
+            move(getcury(stdscr), maxcol - str.size() - 5);
+            ::printw("%s %d%%", str.c_str(), percentage);
+        },
+        [](auto&&) {})(buf.from);
 }
 
 void draw_message(const message& msg)

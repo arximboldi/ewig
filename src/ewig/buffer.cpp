@@ -23,6 +23,8 @@
 #include <immer/flex_vector_transient.hpp>
 #include <immer/algorithm.hpp>
 
+#include <scelta.hpp>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -31,7 +33,20 @@
 
 namespace ewig {
 
-file load_file(const char* file_name)
+bool effects_in_progress(const buffer& buf)
+{
+    return !std::holds_alternative<existing_file>(buf.from);
+}
+
+buffer update_buffer(buffer buf, buffer_action act)
+{
+    return scelta::match([&] (auto&& act) {
+        buf.from = act.file;
+        return buf;
+    })(act);
+}
+
+existing_file load_file(const char* file_name)
 {
     auto file = std::wifstream{file_name};
     auto content = text{}.transient();
@@ -42,23 +57,42 @@ file load_file(const char* file_name)
     return { file_name, content.persistent() };
 }
 
-file save_file(const char* file_name, text content)
+namespace {
+
+auto save_file_effect(immer::box<std::string> file_name, text content)
 {
-    auto file = std::wofstream{file_name};
-    file.exceptions(std::ifstream::badbit);
-    immer::for_each(content, [&] (auto l) {
-        immer::for_each_chunk(l, [&] (auto first, auto last) {
-            file.write(first, last - first);
+    constexpr auto progress_report_rate_bytes = 1 << 20;
+
+    return [=] (auto& ctx) {
+        ctx.async([=] {
+            auto file = std::wofstream{file_name};
+            file.exceptions(std::ifstream::badbit);
+            auto lastp = file.tellp();
+            auto progress = saving_file{ file_name, content, 0 };
+            immer::for_each(content, [&] (auto l) {
+                immer::for_each_chunk(l, [&] (auto first, auto last) {
+                    file.write(first, last - first);
+                });
+                file.put('\n');
+                ++progress.saved_lines;
+                auto currp = file.tellp();
+                if (currp - lastp > progress_report_rate_bytes) {
+                    ctx.dispatch(save_progress_action{progress});
+                    lastp = currp;
+                }
+            });
+            ctx.dispatch(save_done_action{{file_name, content}});
         });
-        file.put('\n');
-    });
-    return {file_name, content};
+    };
 }
 
-buffer save_buffer(buffer buf)
+} // anonymous
+
+result<buffer, buffer_action> save_buffer(buffer buf)
 {
-    buf.from = save_file(buf.from.name.get().c_str(), buf.content);
-    return buf;
+    auto file = std::get<existing_file>(buf.from);
+    buf.from = saving_file{file.name, buf.content, {}};
+    return { buf, save_file_effect(file.name, buf.content) };
 }
 
 buffer load_buffer(const char* file_name)
@@ -69,7 +103,8 @@ buffer load_buffer(const char* file_name)
 
 bool is_dirty(const buffer& buf)
 {
-    return buf.from.content != buf.content;
+    return scelta::match([](auto&& x) { return x.content; })(buf.from)
+        != buf.content;
 }
 
 index display_line_col(const line& ln, index col)

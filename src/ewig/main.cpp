@@ -18,20 +18,12 @@
 // along with ewig.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "ewig/tui.hpp"
+#include "ewig/terminal.hpp"
 #include "ewig/draw.hpp"
 
 #include <iostream>
 
-extern "C" {
-#include <ncursesw/ncurses.h>
-}
-
-using namespace std::placeholders;
-using namespace std::string_literals;
-
 namespace ewig {
-
 namespace {
 
 const auto key_map_emacs = make_key_map(
@@ -43,6 +35,7 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::page_down), "page-down"},
     {key::seq(key::page_up),   "page-up"},
     {key::seq(key::backspace), "delete-char"},
+    {key::seq(key::backspace_),"delete-char"},
     {key::seq(key::delete_),   "delete-char-right"},
     {key::seq(key::home),      "move-beginning-of-line"},
     {key::seq(key::ctrl('a')), "move-beginning-of-line"},
@@ -63,60 +56,30 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::alt('w')),  "copy"},
 });
 
+void run(const char* fname)
+{
+    auto init = application{load_buffer(fname), key_map_emacs};
+    auto serv = boost::asio::io_service{};
+    auto term = terminal{serv};
+    auto view = [&] (auto&& state) { draw(state, term.size()); };
+    auto quit = [&] { term.stop(); };
+    auto st   = store<application, action>{serv, init, update, view, quit};
+    term.start([&] (auto ev) { st.dispatch (ev); });
+    serv.run();
+}
+
 } // anonymous
+} // namespace ewig
 
-tui::tui()
-    : win_{initscr()}
+int main(int argc, char* argv[])
 {
-    if (win_.get() != ::stdscr)
-        throw std::runtime_error{"error while initializing ncurses"};
+    std::locale::global(std::locale(""));
 
-    ::raw();
-    ::noecho();
-    ::keypad(stdscr, true);
-
-    ::start_color();
-    ::use_default_colors();
-    ::init_pair((int)color::message,   COLOR_YELLOW, -1);
-    ::init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
-}
-
-key_code tui::read_key()
-{
-    auto key = wint_t{};
-    auto res = ::wget_wch(win_.get(), &key);
-    return {res, key};
-}
-
-coord tui::size()
-{
-    int maxrow, maxcol;
-    getmaxyx(stdscr, maxrow, maxcol);
-    return {maxrow, maxcol};
-}
-
-event tui::next()
-{
-    return {read_key(), size()};
-}
-
-void tui::cleanup_fn::operator() (WINDOW* win) const
-{
-    if (win) ::endwin();
-}
-
-int run(const char* fname)
-{
-    auto state = application{load_buffer(fname), key_map_emacs};
-    auto ui = tui{};
-    draw(state, ui.size());
-
-    while (auto new_state = update(state, ui.next())) {
-        state = *new_state;
-        draw(state, ui.size());
+    if (argc != 2) {
+        std::cerr << "give me a file name" << std::endl;
+        return 1;
     }
 
+    ewig::run(argv[1]);
     return 0;
 }
-
-} // namespace ewig

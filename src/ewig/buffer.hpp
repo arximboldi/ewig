@@ -21,23 +21,35 @@
 #pragma once
 
 #include <ewig/coord.hpp>
+#include <ewig/store.hpp>
 
 #include <immer/box.hpp>
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
 
 #include <optional>
+#include <variant>
 
 namespace ewig {
 
 using line = immer::flex_vector<wchar_t>;
 using text = immer::flex_vector<line>;
 
-struct file
+struct existing_file
 {
     immer::box<std::string> name;
     text content;
 };
+
+struct saving_file
+{
+    immer::box<std::string> name;
+    text content;
+    std::size_t saved_lines;
+};
+
+using file = std::variant<existing_file,
+                          saving_file>;
 
 struct snapshot
 {
@@ -56,12 +68,21 @@ struct buffer
     std::optional<std::size_t> history_pos;
 };
 
+struct save_progress_action { saving_file file; };
+struct save_done_action { existing_file file; };
+
+using buffer_action = std::variant<save_progress_action,
+                                   save_done_action>;
+
 constexpr auto tab_width = 8;
 
-file load_file(const char* file_name);
-file save_file(const char* file_name, text content);
+bool effects_in_progress(const buffer&);
+
+buffer update_buffer(buffer buf, buffer_action ac);
+
+existing_file load_file(const char* file_name);
 buffer load_buffer(const char* file_name);
-buffer save_buffer(buffer buf);
+result<buffer, buffer_action> save_buffer(buffer buf);
 bool is_dirty(const buffer& buf);
 
 coord actual_cursor(buffer buf);
