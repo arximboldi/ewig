@@ -86,7 +86,15 @@ void terminal::next_()
 
 void terminal::cleanup_fn::operator() (WINDOW* win) const
 {
-    if (win) ::endwin();
+    if (win) {
+        // consume all remaining characters from the terminal so they
+        // don't leak in the bash prompt after quitting, then restore
+        // the terminal state
+        ::nodelay(win, TRUE);
+        auto key = wint_t{};
+        while (::get_wch(&key) != ERR);
+        ::endwin();
+    }
 }
 
 } // namespace ewig
