@@ -30,7 +30,7 @@ using commands = std::unordered_map<std::string, command>;
 
 constexpr auto quit = [] (auto m, auto)
 {
-    return std::pair{m, do_stop};
+    return std::pair{m, [] (auto&& ctx) { ctx.finish(); }};
 };
 
 static const auto global_commands = commands

@@ -63,8 +63,8 @@ auto save_file_effect(immer::box<std::string> file_name, text content)
 {
     constexpr auto progress_report_rate_bytes = 1 << 20;
 
-    return [=] (auto& serv, auto dispatch) {
-        serv.async([=] {
+    return [=] (auto& ctx) {
+        ctx.async([=] {
             auto file = std::wofstream{file_name};
             file.exceptions(std::ifstream::badbit);
             auto lastp = file.tellp();
@@ -77,11 +77,11 @@ auto save_file_effect(immer::box<std::string> file_name, text content)
                 ++progress.saved_lines;
                 auto currp = file.tellp();
                 if (currp - lastp > progress_report_rate_bytes) {
-                    dispatch(save_progress_action{progress});
+                    ctx.dispatch(save_progress_action{progress});
                     lastp = currp;
                 }
             });
-            dispatch(save_done_action{{file_name, content}});
+            ctx.dispatch(save_done_action{{file_name, content}});
         });
     };
 }
