@@ -56,7 +56,7 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::alt('w')),  "copy"},
 });
 
-int run(const char* fname)
+void run(const char* fname)
 {
     auto init = application{load_buffer(fname), key_map_emacs};
     auto serv = boost::asio::io_service{};
@@ -66,7 +66,6 @@ int run(const char* fname)
     auto st   = store<application, action>{serv, init, update, view, quit};
     term.start([&] (auto ev) { st.dispatch (ev); });
     serv.run();
-    return 0;
 }
 
 } // anonymous
@@ -81,5 +80,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    return ewig::run(argv[1]);
+    ewig::run(argv[1]);
+    return 0;
 }
