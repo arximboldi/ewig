@@ -1,3 +1,6 @@
 [submodule "deps/immer"]
 	path = deps/immer
 	url = https://github.com/arximboldi/immer.git
+[submodule "deps/scelta"]
+	path = deps/scelta
+	url = https://github.com/SuperV1234/scelta.git
