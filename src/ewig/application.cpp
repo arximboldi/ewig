@@ -61,14 +61,16 @@ static const auto global_commands = commands
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
-application save(application state, coord)
+result<application, action> save(application state, coord)
 {
-    if (is_dirty(state.current)) {
-        state.current = save_buffer(state.current);
-        return put_message(state, "file saved: "s +
-                           state.current.from.name.get());
-    } else {
+    if (!is_dirty(state.current)) {
         return put_message(state, "nothing to save");
+    } else if (effects_in_progress(state.current)) {
+        return put_message(state, "can't save while saving or loading the file");
+    } else {
+        auto [buffer, effect] = save_buffer(state.current);
+        state.current = buffer;
+        return {state, effect};
     }
 }
 
@@ -105,7 +107,18 @@ result<application, action> update(application state, action ev)
     using result_t = result<application, action>;
 
     return scelta::match(
-        [&](const terminal_action& ev) -> result_t {
+        [&](const buffer_action& ev) -> result_t
+        {
+            state.current = update_buffer(state.current, ev);
+            scelta::match(
+                [&](const save_done_action& act) {
+                    state = put_message(state, "saved: " + act.file.name.get());
+                },
+                [](auto&&) {})(ev);
+            return state;
+        },
+        [&](const terminal_action& ev) -> result_t
+        {
             state.input = state.input.push_back(ev.key);
             const auto& map = state.keys.get();
             auto it = map.find(state.input);

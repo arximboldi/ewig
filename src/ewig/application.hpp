@@ -36,7 +36,8 @@ struct terminal_action
 };
 
 using action = std::variant<
-    terminal_action>;
+    terminal_action,
+    buffer_action>;
 
 struct message
 {
@@ -55,12 +56,12 @@ struct application
 
 using command = std::function<result<application, action>(application, coord)>;
 
-application save(application app, coord);
 application paste(application app, coord size);
 application put_message(application state, std::string str);
 application put_clipboard(application state, text content);
 application clear_input(application state);
 
+result<application, action> save(application app, coord);
 result<application, action> eval_command(application state,
                                         const std::string& cmd,
                                         coord editor_size);
