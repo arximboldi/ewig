@@ -35,9 +35,8 @@ struct terminal_action
     coord size;
 };
 
-using action = std::variant<
-    terminal_action,
-    buffer_action>;
+using action = std::variant<terminal_action,
+                            buffer_action>;
 
 struct message
 {

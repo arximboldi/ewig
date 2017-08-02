@@ -48,9 +48,8 @@ struct saving_file
     std::size_t saved_lines;
 };
 
-using file = std::variant<
-    existing_file,
-    saving_file>;
+using file = std::variant<existing_file,
+                          saving_file>;
 
 struct snapshot
 {
@@ -72,9 +71,8 @@ struct buffer
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
 
-using buffer_action = std::variant<
-    save_progress_action,
-    save_done_action>;
+using buffer_action = std::variant<save_progress_action,
+                                   save_done_action>;
 
 constexpr auto tab_width = 8;
 
