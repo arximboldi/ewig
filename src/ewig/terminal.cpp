@@ -35,7 +35,7 @@ using namespace std::string_literals;
 namespace ewig {
 
 terminal::terminal(boost::asio::io_service& serv)
-    : win_{initscr()}
+    : win_{::initscr()}
     , input_{serv, ::dup(STDIN_FILENO)}
 {
     if (win_.get() != ::stdscr)
@@ -49,6 +49,7 @@ terminal::terminal(boost::asio::io_service& serv)
     ::use_default_colors();
     ::init_pair((int)color::message,   COLOR_YELLOW, -1);
     ::init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
+    ::init_pair((int)color::mode_line_message, COLOR_WHITE, COLOR_RED);
 }
 
 coord terminal::size()

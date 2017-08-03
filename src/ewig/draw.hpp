@@ -28,6 +28,7 @@ enum class color
 {
     message = 1,
     selection,
+    mode_line_message,
 };
 
 void draw(const application& app, coord size);
