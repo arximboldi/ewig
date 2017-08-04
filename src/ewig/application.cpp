@@ -114,6 +114,7 @@ static const auto global_commands = commands
     {"quit",                   app_command(quit)},
     {"save",                   app_command(save)},
     {"load",                   app_command<std::string>(load)},
+    {"message",                app_command<std::string>(put_message)},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
@@ -121,7 +122,10 @@ static const auto global_commands = commands
 
 result<application, action> quit(application app)
 {
-    return {app, [] (auto&& ctx) { ctx.finish(); }};
+    return {
+        put_message(app, "quitting... (waiting for operations to finish)"),
+        [] (auto&& ctx) { ctx.finish(); }
+    };
 }
 
 result<application, action> save(application state)
