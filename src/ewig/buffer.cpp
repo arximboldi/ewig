@@ -100,13 +100,14 @@ auto load_file_effect(immer::box<std::string> file_name)
 
 auto save_file_effect(immer::box<std::string> file_name, text content)
 {
-    constexpr auto progress_report_rate_bytes = 1 << 20;
+    constexpr auto progress_report_rate_lines = (1 << 20) / 40;
 
     return [=] (auto& ctx) {
         ctx.async([=] {
+            using namespace std::chrono;
             auto file = std::wofstream{file_name};
             file.exceptions(std::ifstream::badbit);
-            auto lastp = file.tellp();
+            auto lastp = std::size_t{};
             auto progress = saving_file{ file_name, content, 0 };
             immer::for_each(content, [&] (auto l) {
                 immer::for_each_chunk(l, [&] (auto first, auto last) {
@@ -114,10 +115,9 @@ auto save_file_effect(immer::box<std::string> file_name, text content)
                 });
                 file.put('\n');
                 ++progress.saved_lines;
-                auto currp = file.tellp();
-                if (currp - lastp > progress_report_rate_bytes) {
+                if (progress.saved_lines - lastp > progress_report_rate_lines) {
                     ctx.dispatch(save_progress_action{progress});
-                    lastp = currp;
+                    lastp = progress.saved_lines;
                 }
             });
             ctx.dispatch(save_done_action{{file_name, content}});
