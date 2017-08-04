@@ -35,15 +35,22 @@ namespace ewig {
 
 bool effects_in_progress(const buffer& buf)
 {
-    return !std::holds_alternative<existing_file>(buf.from);
+    return !std::holds_alternative<some_file>(buf.from);
 }
 
 buffer update_buffer(buffer buf, buffer_action act)
 {
-    return scelta::match([&] (auto&& act) {
-        buf.from = act.file;
-        return buf;
-    })(act);
+    return scelta::match(
+        [&] (save_done_action const& act) {
+            scelta::match(
+                [&] (const saving_file& f) {
+                    if (f.token == act.token)
+                        buf.from = act.file;
+                },
+                [&] (const auto&) { return false; })
+                (buf.from);
+            return buf;
+        })(act);
 }
 
 existing_file load_file(const char* file_name)

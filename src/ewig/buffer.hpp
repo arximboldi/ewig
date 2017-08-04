@@ -35,21 +35,22 @@ namespace ewig {
 using line = immer::flex_vector<wchar_t>;
 using text = immer::flex_vector<line>;
 
-struct existing_file
+struct some_file
 {
     immer::box<std::string> name;
-    text content;
+    std::optional<text> content;
 };
 
 struct saving_file
 {
+    effect_token token;
     immer::box<std::string> name;
     text content;
     std::size_t saved_lines;
 };
 
-using file = std::variant<existing_file,
-                          saving_file>;
+using file = std::variant<some_file,
+                         saving_file>;
 
 struct snapshot
 {
@@ -68,8 +69,14 @@ struct buffer
     std::optional<std::size_t> history_pos;
 };
 
-struct save_progress_action { saving_file file; };
-struct save_done_action { existing_file file; };
+struct save_progress_action {
+    effect_token token;
+    int saved_lines;
+};
+struct save_done_action {
+    effect_token token;
+    some_file file;
+};
 
 using buffer_action = std::variant<save_progress_action,
                                    save_done_action>;
@@ -80,7 +87,7 @@ bool effects_in_progress(const buffer&);
 
 buffer update_buffer(buffer buf, buffer_action ac);
 
-existing_file load_file(const char* file_name);
+some_file load_file(const char* file_name);
 buffer load_buffer(const char* file_name);
 result<buffer, buffer_action> save_buffer(buffer buf);
 bool is_dirty(const buffer& buf);

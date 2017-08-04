@@ -20,56 +20,9 @@
 
 #pragma once
 
-#include <boost/asio/io_service.hpp>
-
-#include <functional>
-#include <future>
+#include <ewig/effects.hpp>
 
 namespace ewig {
-
-template <typename Action>
-struct context
-{
-    using action_t      = Action;
-    using service_t     = boost::asio::io_service;
-    using service_ref_t = std::reference_wrapper<service_t>;
-    using finish_t      = std::function<void()>;
-    using dispatch_t    = std::function<void(action_t)>;
-
-    std::reference_wrapper<service_t> service;
-    finish_t finish;
-    dispatch_t dispatch;
-
-    context(const context& ctx) = default;
-    context(context&& ctx) = default;
-
-    template <typename Action_>
-    context(const context<Action_>& ctx)
-        : service(ctx.service)
-        , finish(ctx.finish)
-        , dispatch(ctx.dispatch)
-    {}
-
-    context(service_t& serv, finish_t fn, dispatch_t ds)
-        : service(serv)
-        , finish(std::move(fn))
-        , dispatch(std::move(ds))
-    {}
-
-    template <typename Fn>
-    void async(Fn&& fn) const
-    {
-        std::thread([fn=std::move(fn),
-                   work=boost::asio::io_service::work(service)] {
-            fn();
-        }).detach();
-    }
-};
-
-template <typename Action>
-using effect = std::function<void(const context<Action>&)>;
-
-constexpr auto noop = [] (auto&&...) {};
 
 template <typename Model, typename Action>
 struct result : std::pair<Model, effect<Action>>
@@ -113,7 +66,7 @@ struct store : context<Action>
         base_t::service.get().post([=] {
             auto [model, effect] = reducer_(model_, action);
             model_ = model;
-            effect(*this);
+            post(std::move(effect));
             view_(model_);
         });
     }
