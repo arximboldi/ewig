@@ -60,10 +60,9 @@ void run(const std::string& fname)
 {
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
-    auto view = [&] (auto&& state) { draw(state); };
     auto quit = [&] { term.stop(); };
     auto init = application{term.size(), key_map_emacs};
-    auto st   = store<application, action>{serv, init, update, view, quit};
+    auto st   = store<application, action>{serv, init, update, draw, quit};
     term.start([&] (auto ev) { st.dispatch (ev); });
     st.dispatch(command_action{"load", fname});
     serv.run();
