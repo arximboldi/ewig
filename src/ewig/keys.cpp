@@ -35,7 +35,7 @@ key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args
     for (auto item : args) {
         auto kseq = key_seq{};
         for (auto kcode : item.first) {
-            if (!map[kseq].empty())
+            if (!map[kseq]->empty())
                 throw std::runtime_error{"ambiguous bindings"};
             kseq = kseq.push_back(kcode);
         }

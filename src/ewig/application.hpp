@@ -26,15 +26,23 @@
 
 #include <ctime>
 #include <variant>
+#include <any>
 
 namespace ewig {
 
 struct key_action { key_code key; };
 struct resize_action { coord size; };
 
-using action = std::variant<key_action,
-                            resize_action,
-                            buffer_action>;
+struct command_action
+{
+    immer::box<std::string> name;
+    std::any arg;
+};
+
+using action = std::variant<command_action,
+                           key_action,
+                           resize_action,
+                           buffer_action>;
 
 struct message
 {
@@ -52,7 +60,8 @@ struct application
     immer::vector<message> messages;
 };
 
-using command = std::function<result<application, action>(application)>;
+using command =
+    std::function<result<application, action>(application, std::any)>;
 
 coord editor_size(application app);
 
@@ -63,45 +72,9 @@ application clear_input(application state);
 
 result<application, action> quit(application app);
 result<application, action> save(application app);
-result<application, action> eval_command(application state,
-                                         const std::string& cmd);
 result<application, action> update(application state, action ev);
 
 application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);
-
-template <typename Fn>
-command edit_command(Fn fn)
-{
-    return [=] (application state) {
-        return apply_edit(state, fn(state.current));
-    };
-}
-
-template <typename Fn>
-command paste_command(Fn fn)
-{
-    return [=] (application state) {
-        return apply_edit(state, fn(state.current, state.clipboard.back()));
-    };
-}
-
-template <typename Fn>
-command scroll_command(Fn fn)
-{
-    return [=] (application state) {
-        state.current = fn(state.current, editor_size(state));
-        return state;
-    };
-}
-
-template <typename Fn>
-command key_command(Fn fn)
-{
-    return [=] (application state) {
-        auto key = std::get<1>(state.input.back());
-        return apply_edit(state, fn(state.current, key));
-    };
-}
 
 } // namespace ewig

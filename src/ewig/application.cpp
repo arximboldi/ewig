@@ -26,11 +26,73 @@ using namespace std::string_literals;
 
 namespace ewig {
 
+namespace {
+
+template <typename T>
+struct arg
+{
+    template <typename Fn, typename... Args>
+    static auto invoke(Fn&& fn, const std::any& arg, Args&&... args)
+    {
+        return std::forward<Fn>(fn)(std::forward<Args>(args)...,
+                                   std::any_cast<T>(arg));
+    }
+};
+
+template <>
+struct arg<void>
+{
+    template <typename Fn, typename... Args>
+    static auto invoke(Fn&& fn, const std::any&, Args&&... args)
+    {
+        return std::forward<Fn>(fn)(std::forward<Args>(args)...);
+    }
+};
+
+template <typename Arg=arg<void>, typename Fn>
+command app_command(Fn fn)
+{
+    return [=] (application state, std::any arg) {
+        return Arg::invoke(fn, arg, state);
+    };
+}
+
+template <typename Arg=arg<void>, typename Fn>
+command edit_command(Fn fn)
+{
+    return [=] (application state, std::any arg) {
+        return apply_edit(state, Arg::invoke(fn, arg, state.current));
+    };
+}
+
+template <typename Arg=arg<void>, typename Fn>
+command paste_command(Fn fn)
+{
+    return [=] (application state, std::any arg) {
+        return apply_edit(state, Arg::invoke(fn, arg,
+                                            state.current,
+                                            state.clipboard.back()));
+    };
+}
+
+template <typename Arg=arg<void>, typename Fn>
+command scroll_command(Fn fn)
+{
+    return [=] (application state, std::any arg) {
+        state.current = Arg::invoke(fn, arg,
+                                   state.current,
+                                   editor_size(state));
+        return state;
+    };
+}
+
+} // anonymous namespace
+
 using commands = std::unordered_map<std::string, command>;
 
 static const auto global_commands = commands
 {
-    {"insert",                 key_command(insert_char)},
+    {"insert",                 edit_command<arg<wchar_t>>(insert_char)},
     {"delete-char",            edit_command(delete_char)},
     {"delete-char-right",      edit_command(delete_char_right)},
     {"insert-tab",             edit_command(insert_tab)},
@@ -49,8 +111,8 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   quit},
-    {"save",                   save},
+    {"quit",                   app_command(quit)},
+    {"save",                   app_command(save)},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
@@ -107,6 +169,16 @@ result<application, action> update(application state, action ev)
     using result_t = result<application, action>;
 
     return scelta::match(
+        [&](const command_action& ev) -> result_t
+        {
+            auto it = global_commands.find(ev.name);
+            if (it != global_commands.end()) {
+                state = put_message(state, "calling command: "s + *ev.name);
+                return it->second(state, ev.arg);
+            } else {
+                return put_message(state, "unknown command: "s + *ev.name);
+            }
+        },
         [&](const buffer_action& ev) -> result_t
         {
             state.current = update_buffer(state.current, ev);
@@ -128,8 +200,8 @@ result<application, action> update(application state, action ev)
             const auto& map = state.keys.get();
             auto it = map.find(state.input);
             if (it != map.end()) {
-                if (!it->second.empty()) {
-                    auto result = eval_command(state, it->second);
+                if (!it->second->empty()) {
+                    auto result = update(state, command_action{it->second, {}});
                     return {clear_input(result.first), result.second};
                 }
             } else if (key_seq{ev.key} != key::ctrl('[')) {
@@ -137,7 +209,7 @@ result<application, action> update(application state, action ev)
                 auto is_single_char = state.input.size() == 1;
                 auto [kres, kkey] = ev.key;
                 if (is_single_char && !kres && !std::iscntrl(kkey)) {
-                    auto result = eval_command(state, "insert");
+                    auto result = update(state, command_action{"insert", kkey});
                     return {clear_input(result.first), result.second};
                 } else {
                     return clear_input(put_message(state, "unbound key sequence: " +
@@ -146,17 +218,6 @@ result<application, action> update(application state, action ev)
             }
             return state;
         })(ev);
-}
-
-result<application, action> eval_command(application state,
-                                         const std::string& cmd)
-{
-    auto it = global_commands.find(cmd);
-    if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd));
-    } else {
-        return put_message(state, "unknown command: "s + cmd);
-    }
 }
 
 application apply_edit(application state, buffer edit)
