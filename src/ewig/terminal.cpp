@@ -37,6 +37,7 @@ namespace ewig {
 terminal::terminal(boost::asio::io_service& serv)
     : win_{::initscr()}
     , input_{serv, ::dup(STDIN_FILENO)}
+    , signal_{serv, SIGWINCH}
 {
     if (win_.get() != ::stdscr)
         throw std::runtime_error{"error while initializing ncurses"};
@@ -63,29 +64,42 @@ void terminal::start(action_handler ev)
 {
     assert(!handler_);
     handler_ = std::move(ev);
-    next_();
+    next_key_();
+    next_resize_();
 }
 
 void terminal::stop()
 {
     input_.cancel();
+    signal_.cancel();
     handler_ = {};
 }
 
-void terminal::next_()
+void terminal::next_resize_()
+{
+    signal_.async_wait([=] (auto ec, auto) {
+        if (!ec) {
+            next_resize_();
+            auto ws = ::winsize{};
+            if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
+                ::perror("TIOCGWINSZ");
+            else {
+                ::resizeterm(ws.ws_row, ws.ws_col);
+                handler_(resize_action{{ws.ws_row, ws.ws_col}});
+            }
+        }
+    });
+}
+
+void terminal::next_key_()
 {
     using namespace boost::asio;
     input_.async_read_some(null_buffers(), [&] (auto ec, auto) {
         if (!ec) {
             auto key = wint_t{};
             auto res = ::wget_wch(win_.get(), &key);
-            next_();
-            // fixme: in theory we should be able to check key ==
-            // KEY_RESIZE but it seems to not really work...
-            if (key == KEY_RESIZE)
-                handler_(resize_action{size()});
-            else
-                handler_(key_action{{res, key}});
+            next_key_();
+            handler_(key_action{{res, key}});
         }
     });
 }
