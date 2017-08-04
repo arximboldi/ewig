@@ -80,7 +80,12 @@ void terminal::next_()
             auto key = wint_t{};
             auto res = ::wget_wch(win_.get(), &key);
             next_();
-            handler_({{res, key}, size()});
+            // fixme: in theory we should be able to check key ==
+            // KEY_RESIZE but it seems to not really work...
+            if (key == KEY_RESIZE)
+                handler_(resize_action{size()});
+            else
+                handler_(key_action{{res, key}});
         }
     });
 }

@@ -89,7 +89,6 @@ coord actual_cursor(buffer buf);
 coord actual_display_cursor(const buffer& buf);
 
 index display_line_col(const line& ln, index col);
-coord editor_size(coord size);
 
 buffer page_up(buffer buf, coord size);
 buffer page_down(buffer buf, coord size);

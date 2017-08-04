@@ -140,11 +140,11 @@ void draw_text_cursor(const buffer& buf, coord window_size)
                cursor.row < buf.scroll.row + window_size.row);
 }
 
-void draw(const application& app, coord size)
+void draw(const application& app)
 {
     ::erase();
 
-    size = editor_size(size);
+    auto size = editor_size(app);
     ::move(0, 0);
     draw_text(app.current, size);
 

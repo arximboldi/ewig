@@ -58,11 +58,11 @@ const auto key_map_emacs = make_key_map(
 
 void run(const char* fname)
 {
-    auto init = application{load_buffer(fname), key_map_emacs};
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
-    auto view = [&] (auto&& state) { draw(state, term.size()); };
+    auto view = [&] (auto&& state) { draw(state); };
     auto quit = [&] { term.stop(); };
+    auto init = application{term.size(), load_buffer(fname), key_map_emacs};
     auto st   = store<application, action>{serv, init, update, view, quit};
     term.start([&] (auto ev) { st.dispatch (ev); });
     serv.run();

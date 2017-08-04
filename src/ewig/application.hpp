@@ -29,13 +29,11 @@
 
 namespace ewig {
 
-struct terminal_action
-{
-    key_code key;
-    coord size;
-};
+struct key_action { key_code key; };
+struct resize_action { coord size; };
 
-using action = std::variant<terminal_action,
+using action = std::variant<key_action,
+                            resize_action,
                             buffer_action>;
 
 struct message
@@ -46,6 +44,7 @@ struct message
 
 struct application
 {
+    coord window_size;
     buffer current;
     key_map keys;
     key_seq input;
@@ -53,17 +52,19 @@ struct application
     immer::vector<message> messages;
 };
 
-using command = std::function<result<application, action>(application, coord)>;
+using command = std::function<result<application, action>(application)>;
+
+coord editor_size(application app);
 
 application paste(application app, coord size);
 application put_message(application state, std::string str);
 application put_clipboard(application state, text content);
 application clear_input(application state);
 
-result<application, action> save(application app, coord);
+result<application, action> quit(application app);
+result<application, action> save(application app);
 result<application, action> eval_command(application state,
-                                        const std::string& cmd,
-                                        coord editor_size);
+                                         const std::string& cmd);
 result<application, action> update(application state, action ev);
 
 application apply_edit(application state, coord size, buffer edit);
@@ -72,24 +73,24 @@ application apply_edit(application state, coord size, std::pair<buffer, text> ed
 template <typename Fn>
 command edit_command(Fn fn)
 {
-    return [=] (application state, coord size) {
-        return apply_edit(state, size, fn(state.current));
+    return [=] (application state) {
+        return apply_edit(state, fn(state.current));
     };
 }
 
 template <typename Fn>
 command paste_command(Fn fn)
 {
-    return [=] (application state, coord size) {
-        return apply_edit(state, size, fn(state.current, state.clipboard.back()));
+    return [=] (application state) {
+        return apply_edit(state, fn(state.current, state.clipboard.back()));
     };
 }
 
 template <typename Fn>
 command scroll_command(Fn fn)
 {
-    return [=] (application state, coord size) {
-        state.current = fn(state.current, editor_size(size));
+    return [=] (application state) {
+        state.current = fn(state.current, editor_size(state));
         return state;
     };
 }
@@ -97,9 +98,9 @@ command scroll_command(Fn fn)
 template <typename Fn>
 command key_command(Fn fn)
 {
-    return [=] (application state, coord size) {
+    return [=] (application state) {
         auto key = std::get<1>(state.input.back());
-        return apply_edit(state, size, fn(state.current, key));
+        return apply_edit(state, fn(state.current, key));
     };
 }
 

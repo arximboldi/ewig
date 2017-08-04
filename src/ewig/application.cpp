@@ -28,11 +28,6 @@ namespace ewig {
 
 using commands = std::unordered_map<std::string, command>;
 
-constexpr auto quit = [] (auto m, auto)
-{
-    return std::pair{m, [] (auto&& ctx) { ctx.finish(); }};
-};
-
 static const auto global_commands = commands
 {
     {"insert",                 key_command(insert_char)},
@@ -61,7 +56,12 @@ static const auto global_commands = commands
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
-result<application, action> save(application state, coord)
+result<application, action> quit(application app)
+{
+    return {app, [] (auto&& ctx) { ctx.finish(); }};
+}
+
+result<application, action> save(application state)
 {
     if (!is_dirty(state.current)) {
         return put_message(state, "nothing to save");
@@ -91,9 +91,9 @@ coord actual_cursor(buffer buf)
     };
 }
 
-coord editor_size(coord size)
+coord editor_size(application app)
 {
-    return {size.row - 2, size.col};
+    return {app.window_size.row - 2, app.window_size.col};
 }
 
 application clear_input(application state)
@@ -117,14 +117,19 @@ result<application, action> update(application state, action ev)
                 [](auto&&) {})(ev);
             return state;
         },
-        [&](const terminal_action& ev) -> result_t
+        [&](const resize_action& ev) -> result_t
+        {
+            state.window_size = ev.size;
+            return state;
+        },
+        [&](const key_action& ev) -> result_t
         {
             state.input = state.input.push_back(ev.key);
             const auto& map = state.keys.get();
             auto it = map.find(state.input);
             if (it != map.end()) {
                 if (!it->second.empty()) {
-                    auto result = eval_command(state, it->second, ev.size);
+                    auto result = eval_command(state, it->second);
                     return {clear_input(result.first), result.second};
                 }
             } else if (key_seq{ev.key} != key::ctrl('[')) {
@@ -132,7 +137,7 @@ result<application, action> update(application state, action ev)
                 auto is_single_char = state.input.size() == 1;
                 auto [kres, kkey] = ev.key;
                 if (is_single_char && !kres && !std::iscntrl(kkey)) {
-                    auto result = eval_command(state, "insert", ev.size);
+                    auto result = eval_command(state, "insert");
                     return {clear_input(result.first), result.second};
                 } else {
                     return clear_input(put_message(state, "unbound key sequence: " +
@@ -144,28 +149,27 @@ result<application, action> update(application state, action ev)
 }
 
 result<application, action> eval_command(application state,
-                                         const std::string& cmd,
-                                         coord size)
+                                         const std::string& cmd)
 {
     auto it = global_commands.find(cmd);
     if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd), size);
+        return it->second(put_message(state, "calling command: "s + cmd));
     } else {
         return put_message(state, "unknown command: "s + cmd);
     }
 }
 
-application apply_edit(application state, coord size, buffer edit)
+application apply_edit(application state, buffer edit)
 {
     state.current = record(state.current,
-                           scroll_to_cursor(edit, editor_size(size)));
+                           scroll_to_cursor(edit, editor_size(state)));
     return state;
 }
 
-application apply_edit(application state, coord size, std::pair<buffer, text> edit)
+application apply_edit(application state, std::pair<buffer, text> edit)
 {
     state.current = record(state.current,
-                           scroll_to_cursor(edit.first, editor_size(size)));
+                           scroll_to_cursor(edit.first, editor_size(state)));
     return put_clipboard(state, edit.second);
 }
 

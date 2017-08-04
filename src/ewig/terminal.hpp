@@ -31,7 +31,7 @@ namespace ewig {
 
 struct terminal
 {
-    using action_handler = std::function<void(terminal_action)>;
+    using action_handler = std::function<void(action)>;
 
     terminal(boost::asio::io_service& serv);
 
