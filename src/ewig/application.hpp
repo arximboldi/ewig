@@ -53,9 +53,9 @@ struct message
 struct application
 {
     coord window_size;
-    buffer current;
     key_map keys;
     key_seq input;
+    buffer current;
     immer::vector<text> clipboard;
     immer::vector<message> messages;
 };
@@ -66,12 +66,13 @@ using command =
 coord editor_size(application app);
 
 application paste(application app, coord size);
-application put_message(application state, std::string str);
+application put_message(application state, immer::box<std::string> str);
 application put_clipboard(application state, text content);
 application clear_input(application state);
 
 result<application, action> quit(application app);
 result<application, action> save(application app);
+result<application, action> load(application app, const std::string& fname);
 result<application, action> update(application state, action ev);
 
 application apply_edit(application state, coord size, buffer edit);

@@ -118,6 +118,15 @@ void draw_mode_line(const buffer& buf, index maxcol)
             ::attron(COLOR_PAIR(color::mode_line_message));
             ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
         },
+        [&] (const loading_file& file) {
+            auto str        = std::string{"loading..."};
+            auto progress   = (float)file.loaded_bytes / file.total_bytes;
+            auto percentage = int(progress * 100);
+            ::move(getcury(stdscr), maxcol - str.size() - 6);
+            attrset(A_NORMAL | A_BOLD);
+            ::attron(COLOR_PAIR(color::mode_line_message));
+            ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
+        },
         [](auto&&) {})(buf.from);
 }
 

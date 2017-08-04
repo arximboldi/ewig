@@ -33,31 +33,70 @@
 
 namespace ewig {
 
-bool effects_in_progress(const buffer& buf)
+immer::box<std::string> no_file::name = "*unnamed*";
+text no_file::content = {};
+
+bool load_in_progress(const buffer& buf)
 {
-    return !std::holds_alternative<existing_file>(buf.from);
+    return std::holds_alternative<loading_file>(buf.from);
+}
+
+bool io_in_progress(const buffer& buf)
+{
+    return
+        !std::holds_alternative<existing_file>(buf.from) &&
+        !std::holds_alternative<no_file>(buf.from);
 }
 
 buffer update_buffer(buffer buf, buffer_action act)
 {
-    return scelta::match([&] (auto&& act) {
-        buf.from = act.file;
-        return buf;
-    })(act);
-}
-
-existing_file load_file(const char* file_name)
-{
-    auto file = std::wifstream{file_name};
-    auto content = text{}.transient();
-    file.exceptions(std::ifstream::badbit);
-    auto ln = std::wstring{};
-    while (std::getline(file, ln))
-        content.push_back({begin(ln), end(ln)});
-    return { file_name, content.persistent() };
+    return scelta::match(
+        [&] (auto&& act) {
+            if (load_in_progress(buf))
+                buf.content = act.file.content;
+            buf.from = act.file;
+            return buf;
+        })(act);
 }
 
 namespace {
+
+auto load_file_effect(immer::box<std::string> file_name)
+{
+    constexpr auto progress_report_rate_bytes = 1 << 20;
+
+    return [=] (auto& ctx) {
+        ctx.async([=] {
+            auto file = std::wifstream{file_name};
+            file.exceptions(std::ifstream::badbit);
+            auto begp = file.tellg();
+            file.seekg(0, std::ios::end);
+            auto endp = file.tellg();
+            file.seekg(0, std::ios::beg);
+            auto progress = loading_file{ file_name, {}, 0, endp - begp };
+            auto content = text{}.transient();
+            auto ln = std::wstring{};
+            auto lastp = begp;
+            auto currp = begp;
+            // work-around gcc-7 bug
+            // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+            while (std::getline(file, ln)) {
+#pragma GCC diagnostic pop
+                content.push_back({begin(ln), end(ln)});
+                currp += ln.size();
+                if (currp - lastp > progress_report_rate_bytes) {
+                    progress.content = content.persistent();
+                    progress.loaded_bytes = currp - begp;
+                    ctx.dispatch(load_progress_action{progress});
+                    lastp = currp;
+                }
+            }
+            ctx.dispatch(load_done_action{{file_name, content.persistent()}});
+        });
+    };
+}
 
 auto save_file_effect(immer::box<std::string> file_name, text content)
 {
@@ -95,16 +134,17 @@ result<buffer, buffer_action> save_buffer(buffer buf)
     return { buf, save_file_effect(file.name, buf.content) };
 }
 
-buffer load_buffer(const char* file_name)
+result<buffer, buffer_action> load_buffer(buffer buf, const std::string& fname)
 {
-    auto file = load_file(file_name);
-    return {file, file.content};
+    buf.from = loading_file{fname, {}, {}, 1};
+    return { buf, load_file_effect(fname) };
 }
 
 bool is_dirty(const buffer& buf)
 {
-    return scelta::match([](auto&& x) { return x.content; })(buf.from)
-        != buf.content;
+    return scelta::match(
+        [&](auto&& x) { return buf.content != x.content; })
+        (buf.from);
 }
 
 index display_line_col(const line& ln, index col)
@@ -461,14 +501,18 @@ buffer undo(buffer buf)
     return buf;
 }
 
-buffer record(buffer before, buffer after)
+std::pair<buffer, std::string> record(buffer before, buffer after)
 {
     if (before.content != after.content) {
-        after.history = after.history.push_back({before.content, before.cursor});
-        if (before.history_pos == after.history_pos)
-            after.history_pos = std::nullopt;
+        if (load_in_progress(before)) {
+            return {before, "can't edit while loading"};
+        } else {
+            after.history = after.history.push_back({before.content, before.cursor});
+            if (before.history_pos == after.history_pos)
+                after.history_pos = std::nullopt;
+        }
     }
-    return after;
+    return {after, ""};
 }
 
 } // namespace ewig
