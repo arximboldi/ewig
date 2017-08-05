@@ -35,8 +35,9 @@ using namespace std::string_literals;
 namespace ewig {
 
 terminal::terminal(boost::asio::io_service& serv)
-    : win_{initscr()}
+    : win_{::initscr()}
     , input_{serv, ::dup(STDIN_FILENO)}
+    , signal_{serv, SIGWINCH}
 {
     if (win_.get() != ::stdscr)
         throw std::runtime_error{"error while initializing ncurses"};
@@ -49,6 +50,7 @@ terminal::terminal(boost::asio::io_service& serv)
     ::use_default_colors();
     ::init_pair((int)color::message,   COLOR_YELLOW, -1);
     ::init_pair((int)color::selection, COLOR_BLACK, COLOR_YELLOW);
+    ::init_pair((int)color::mode_line_message, COLOR_WHITE, COLOR_RED);
 }
 
 coord terminal::size()
@@ -62,24 +64,42 @@ void terminal::start(action_handler ev)
 {
     assert(!handler_);
     handler_ = std::move(ev);
-    next_();
+    next_key_();
+    next_resize_();
 }
 
 void terminal::stop()
 {
     input_.cancel();
+    signal_.cancel();
     handler_ = {};
 }
 
-void terminal::next_()
+void terminal::next_resize_()
+{
+    signal_.async_wait([=] (auto ec, auto) {
+        if (!ec) {
+            next_resize_();
+            auto ws = ::winsize{};
+            if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
+                ::perror("TIOCGWINSZ");
+            else {
+                ::resizeterm(ws.ws_row, ws.ws_col);
+                handler_(resize_action{{ws.ws_row, ws.ws_col}});
+            }
+        }
+    });
+}
+
+void terminal::next_key_()
 {
     using namespace boost::asio;
     input_.async_read_some(null_buffers(), [&] (auto ec, auto) {
         if (!ec) {
             auto key = wint_t{};
             auto res = ::wget_wch(win_.get(), &key);
-            next_();
-            handler_({{res, key}, size()});
+            next_key_();
+            handler_(key_action{{res, key}});
         }
     });
 }

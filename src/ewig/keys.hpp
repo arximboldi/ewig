@@ -35,7 +35,7 @@ namespace ewig {
 
 using key_code = std::tuple<int, wint_t>;
 using key_seq  = immer::vector<key_code>;
-using key_map  = immer::box<std::unordered_map<key_seq, std::string>>;
+using key_map  = immer::box<std::unordered_map<key_seq, immer::box<std::string>>>;
 
 // Builds a keymap from `args`.  It also associates all key sequence
 // prefixes to the empty string, and checks for ambiguous key command

@@ -56,15 +56,15 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::alt('w')),  "copy"},
 });
 
-void run(const char* fname)
+void run(const std::string& fname)
 {
-    auto init = application{load_buffer(fname), key_map_emacs};
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
-    auto view = [&] (auto&& state) { draw(state, term.size()); };
     auto quit = [&] { term.stop(); };
-    auto st   = store<application, action>{serv, init, update, view, quit};
+    auto init = application{term.size(), key_map_emacs};
+    auto st   = store<application, action>{serv, init, update, draw, quit};
     term.start([&] (auto ev) { st.dispatch (ev); });
+    st.dispatch(command_action{"load", fname});
     serv.run();
 }
 

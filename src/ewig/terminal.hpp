@@ -23,6 +23,7 @@
 #include <ewig/application.hpp>
 
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/signal_set.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 
 struct _win_st;
@@ -31,7 +32,7 @@ namespace ewig {
 
 struct terminal
 {
-    using action_handler = std::function<void(terminal_action)>;
+    using action_handler = std::function<void(action)>;
 
     terminal(boost::asio::io_service& serv);
 
@@ -46,10 +47,12 @@ private:
         void operator() (_win_st* win) const;
     };
 
-    void next_();
+    void next_key_();
+    void next_resize_();
 
     std::unique_ptr<_win_st, cleanup_fn> win_;
     boost::asio::posix::stream_descriptor input_;
+    boost::asio::signal_set signal_;
     action_handler handler_;
 };
 

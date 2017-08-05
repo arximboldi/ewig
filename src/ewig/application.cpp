@@ -26,16 +26,73 @@ using namespace std::string_literals;
 
 namespace ewig {
 
-using commands = std::unordered_map<std::string, command>;
+namespace {
 
-constexpr auto quit = [] (auto m, auto)
+template <typename T>
+struct arg
 {
-    return std::pair{m, [] (auto&& ctx) { ctx.finish(); }};
+    template <typename Fn, typename... Args>
+    static auto invoke(Fn&& fn, const std::any& arg, Args&&... args)
+    {
+        return std::forward<Fn>(fn)(std::forward<Args>(args)...,
+                                   std::any_cast<T>(arg));
+    }
 };
+
+template <>
+struct arg<void>
+{
+    template <typename Fn, typename... Args>
+    static auto invoke(Fn&& fn, const std::any&, Args&&... args)
+    {
+        return std::forward<Fn>(fn)(std::forward<Args>(args)...);
+    }
+};
+
+template <typename Arg=void, typename Fn>
+command app_command(Fn fn)
+{
+    return [=] (application state, std::any x) {
+        return arg<Arg>::invoke(fn, x, state);
+    };
+}
+
+template <typename Arg=void, typename Fn>
+command edit_command(Fn fn)
+{
+    return [=] (application state, std::any x) {
+        return apply_edit(state, arg<Arg>::invoke(fn, x, state.current));
+    };
+}
+
+template <typename Arg=void, typename Fn>
+command paste_command(Fn fn)
+{
+    return [=] (application state, std::any x) {
+        return apply_edit(state, arg<Arg>::invoke(fn, x,
+                                                 state.current,
+                                                 state.clipboard.back()));
+    };
+}
+
+template <typename Arg=arg<void>, typename Fn>
+command scroll_command(Fn fn)
+{
+    return [=] (application state, std::any arg) {
+        state.current = Arg::invoke(fn, arg,
+                                   state.current,
+                                   editor_size(state));
+        return state;
+    };
+}
+
+} // anonymous namespace
+
+using commands = std::unordered_map<std::string, command>;
 
 static const auto global_commands = commands
 {
-    {"insert",                 key_command(insert_char)},
+    {"insert",                 edit_command<wchar_t>(insert_char)},
     {"delete-char",            edit_command(delete_char)},
     {"delete-char-right",      edit_command(delete_char_right)},
     {"insert-tab",             edit_command(insert_tab)},
@@ -54,18 +111,28 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   quit},
-    {"save",                   save},
+    {"quit",                   app_command(quit)},
+    {"save",                   app_command(save)},
+    {"load",                   app_command<std::string>(load)},
+    {"message",                app_command<std::string>(put_message)},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
 };
 
-result<application, action> save(application state, coord)
+result<application, action> quit(application app)
+{
+    return {
+        put_message(app, "quitting... (waiting for operations to finish)"),
+        [] (auto&& ctx) { ctx.finish(); }
+    };
+}
+
+result<application, action> save(application state)
 {
     if (!is_dirty(state.current)) {
         return put_message(state, "nothing to save");
-    } else if (effects_in_progress(state.current)) {
+    } else if (io_in_progress(state.current)) {
         return put_message(state, "can't save while saving or loading the file");
     } else {
         auto [buffer, effect] = save_buffer(state.current);
@@ -74,10 +141,23 @@ result<application, action> save(application state, coord)
     }
 }
 
-application put_message(application state, std::string str)
+result<application, action> load(application state, const std::string& fname)
 {
-    state.messages = std::move(state.messages)
-        .push_back({std::time(nullptr), std::move(str)});
+    if (io_in_progress(state.current)) {
+        return put_message(state, "can't load while saving or loading the file");
+    } else {
+        auto [buffer, effect] = load_buffer(state.current, fname);
+        state.current = buffer;
+        return {state, effect};
+    }
+}
+
+application put_message(application state, immer::box<std::string> str)
+{
+    if (!str->empty()) {
+        state.messages = std::move(state.messages)
+            .push_back({std::time(nullptr), std::move(str)});
+    }
     return state;
 }
 
@@ -91,9 +171,9 @@ coord actual_cursor(buffer buf)
     };
 }
 
-coord editor_size(coord size)
+coord editor_size(application app)
 {
-    return {size.row - 2, size.col};
+    return {app.window_size.row - 2, app.window_size.col};
 }
 
 application clear_input(application state)
@@ -107,24 +187,42 @@ result<application, action> update(application state, action ev)
     using result_t = result<application, action>;
 
     return scelta::match(
+        [&](const command_action& ev) -> result_t
+        {
+            auto it = global_commands.find(ev.name);
+            if (it != global_commands.end()) {
+                state = put_message(state, "calling command: "s + *ev.name);
+                return it->second(state, ev.arg);
+            } else {
+                return put_message(state, "unknown command: "s + *ev.name);
+            }
+        },
         [&](const buffer_action& ev) -> result_t
         {
             state.current = update_buffer(state.current, ev);
             scelta::match(
+                [&](const load_done_action& act) {
+                    state = put_message(state, "loaded: " + act.file.name.get());
+                },
                 [&](const save_done_action& act) {
                     state = put_message(state, "saved: " + act.file.name.get());
                 },
                 [](auto&&) {})(ev);
             return state;
         },
-        [&](const terminal_action& ev) -> result_t
+        [&](const resize_action& ev) -> result_t
+        {
+            state.window_size = ev.size;
+            return state;
+        },
+        [&](const key_action& ev) -> result_t
         {
             state.input = state.input.push_back(ev.key);
             const auto& map = state.keys.get();
             auto it = map.find(state.input);
             if (it != map.end()) {
-                if (!it->second.empty()) {
-                    auto result = eval_command(state, it->second, ev.size);
+                if (!it->second->empty()) {
+                    auto result = update(state, command_action{it->second, {}});
                     return {clear_input(result.first), result.second};
                 }
             } else if (key_seq{ev.key} != key::ctrl('[')) {
@@ -132,7 +230,8 @@ result<application, action> update(application state, action ev)
                 auto is_single_char = state.input.size() == 1;
                 auto [kres, kkey] = ev.key;
                 if (is_single_char && !kres && !std::iscntrl(kkey)) {
-                    auto result = eval_command(state, "insert", ev.size);
+                    auto result = update(
+                        state, command_action{"insert", (wchar_t)kkey});
                     return {clear_input(result.first), result.second};
                 } else {
                     return clear_input(put_message(state, "unbound key sequence: " +
@@ -143,30 +242,20 @@ result<application, action> update(application state, action ev)
         })(ev);
 }
 
-result<application, action> eval_command(application state,
-                                         const std::string& cmd,
-                                         coord size)
+application apply_edit(application state, buffer edit)
 {
-    auto it = global_commands.find(cmd);
-    if (it != global_commands.end()) {
-        return it->second(put_message(state, "calling command: "s + cmd), size);
-    } else {
-        return put_message(state, "unknown command: "s + cmd);
-    }
+    auto msg = std::string{};
+    std::tie(state.current, msg) =
+        record(state.current, scroll_to_cursor(edit, editor_size(state)));
+    return put_message(state, msg);
 }
 
-application apply_edit(application state, coord size, buffer edit)
+application apply_edit(application state, std::pair<buffer, text> edit)
 {
-    state.current = record(state.current,
-                           scroll_to_cursor(edit, editor_size(size)));
-    return state;
-}
-
-application apply_edit(application state, coord size, std::pair<buffer, text> edit)
-{
-    state.current = record(state.current,
-                           scroll_to_cursor(edit.first, editor_size(size)));
-    return put_clipboard(state, edit.second);
+    auto msg = std::string{};
+    std::tie(state.current, msg) =
+        record(state.current, scroll_to_cursor(edit.first, editor_size(state)));
+    return put_message(put_clipboard(state, edit.second), msg);
 }
 
 application put_clipboard(application state, text content)

@@ -28,9 +28,10 @@ enum class color
 {
     message = 1,
     selection,
+    mode_line_message,
 };
 
-void draw(const application& app, coord size);
+void draw(const application& app);
 void draw_text(const buffer& buf, coord size);
 void draw_mode_line(const buffer& buffer, index maxcol);
 void draw_message(const message& msg);

@@ -35,6 +35,12 @@ namespace ewig {
 using line = immer::flex_vector<wchar_t>;
 using text = immer::flex_vector<line>;
 
+struct no_file
+{
+    static immer::box<std::string> name;
+    static text content;
+};
+
 struct existing_file
 {
     immer::box<std::string> name;
@@ -48,8 +54,18 @@ struct saving_file
     std::size_t saved_lines;
 };
 
-using file = std::variant<existing_file,
-                          saving_file>;
+struct loading_file
+{
+    immer::box<std::string> name;
+    text content;
+    std::streamoff loaded_bytes;
+    std::streamoff total_bytes;
+};
+
+using file = std::variant<no_file,
+                         existing_file,
+                         loading_file,
+                         saving_file>;
 
 struct snapshot
 {
@@ -68,28 +84,32 @@ struct buffer
     std::optional<std::size_t> history_pos;
 };
 
+struct load_progress_action { loading_file file; };
+struct load_done_action { existing_file file; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
 
-using buffer_action = std::variant<save_progress_action,
+using buffer_action = std::variant<load_progress_action,
+                                   load_done_action,
+                                   save_progress_action,
                                    save_done_action>;
 
 constexpr auto tab_width = 8;
 
-bool effects_in_progress(const buffer&);
+bool io_in_progress(const buffer&);
+bool load_in_progress(const buffer&);
+bool is_dirty(const buffer& buf);
 
 buffer update_buffer(buffer buf, buffer_action ac);
 
-existing_file load_file(const char* file_name);
-buffer load_buffer(const char* file_name);
+result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
 result<buffer, buffer_action> save_buffer(buffer buf);
-bool is_dirty(const buffer& buf);
+
 
 coord actual_cursor(buffer buf);
 coord actual_display_cursor(const buffer& buf);
 
 index display_line_col(const line& ln, index col);
-coord editor_size(coord size);
 
 buffer page_up(buffer buf, coord size);
 buffer page_down(buffer buf, coord size);
@@ -124,6 +144,6 @@ buffer clear_selection(buffer buf);
 std::tuple<coord, coord> selected_region(buffer buf);
 
 buffer undo(buffer);
-buffer record(buffer before, buffer after);
+std::pair<buffer, std::string> record(buffer before, buffer after);
 
 } // namespace ewig

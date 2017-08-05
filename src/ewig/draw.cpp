@@ -107,14 +107,25 @@ void draw_mode_line(const buffer& buf, index maxcol)
             buf.cursor.col,
             buf.cursor.row);
     ::hline(' ', maxcol);
+
     scelta::match(
         [&] (const saving_file& file) {
-            attron(A_BOLD);
             auto str        = std::string{"saving..."};
             auto progress   = (float)file.saved_lines / file.content.size();
             auto percentage = int(progress * 100);
-            move(getcury(stdscr), maxcol - str.size() - 5);
-            ::printw("%s %d%%", str.c_str(), percentage);
+            ::move(getcury(stdscr), maxcol - str.size() - 6);
+            attrset(A_NORMAL | A_BOLD);
+            ::attron(COLOR_PAIR(color::mode_line_message));
+            ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
+        },
+        [&] (const loading_file& file) {
+            auto str        = std::string{"loading..."};
+            auto progress   = (float)file.loaded_bytes / file.total_bytes;
+            auto percentage = int(progress * 100);
+            ::move(getcury(stdscr), maxcol - str.size() - 6);
+            attrset(A_NORMAL | A_BOLD);
+            ::attron(COLOR_PAIR(color::mode_line_message));
+            ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
         },
         [](auto&&) {})(buf.from);
 }
@@ -138,11 +149,11 @@ void draw_text_cursor(const buffer& buf, coord window_size)
                cursor.row < buf.scroll.row + window_size.row);
 }
 
-void draw(const application& app, coord size)
+void draw(const application& app)
 {
-    erase();
+    ::erase();
 
-    size = editor_size(size);
+    auto size = editor_size(app);
     ::move(0, 0);
     draw_text(app.current, size);
 
