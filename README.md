@@ -13,6 +13,15 @@ functional architecture.  We invite you to
 Learn more in the **C++Now'17 Talk**:
 _[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0UAC8)_.
 
+> <a href="https://www.patreon.com/sinusoidal">
+>     <img align="right" src="https://cdn.rawgit.com/arximboldi/immer/master/doc/_static/patreon.svg">
+> </a>
+>
+> This project is part of a long-term vision helping interactive and
+> concurrent C++ programs become easier to write. **Help this project's
+> long term sustainability by becoming a patron or buying a
+> sponsorship package:** juanpe@sinusoid.al
+
 ---
 
 <p align="center">
