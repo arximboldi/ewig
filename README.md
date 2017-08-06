@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/arximboldi/ewig.svg?branch=master)](https://travis-ci.org/arximboldi/ewig)
-<a href="https://sinusoid.al"><img align="right" src="https://cdn.rawgit.com/arximboldi/immer/master/doc/_static/sinusoidal-badge.svg"></a>
+<a href="https://sinusoid.al"><img align="right" src="https://cdn.rawgit.com/arximboldi/immer/355a113782aedc2ea22463444014809269c2376d/doc/_static/sinusoidal-badge.svg"></a>
 
 <p align="center">
   <img src="https://cdn.rawgit.com/arximboldi/ewig/36d00237/doc/logo-front.svg">
