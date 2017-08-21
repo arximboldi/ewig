@@ -61,6 +61,15 @@ buffer update_buffer(buffer buf, buffer_action act)
 
 namespace {
 
+std::streamoff stream_size(std::wistream& file)
+{
+    auto begp = file.tellg();
+    file.seekg(0, std::ios::end);
+    auto endp = file.tellg();
+    file.seekg(begp, std::ios::beg);
+    return endp - begp;
+}
+
 auto load_file_effect(immer::box<std::string> file_name)
 {
     constexpr auto progress_report_rate_bytes = 1 << 20;
@@ -69,15 +78,11 @@ auto load_file_effect(immer::box<std::string> file_name)
         ctx.async([=] {
             auto file = std::wifstream{file_name};
             file.exceptions(std::ifstream::badbit);
-            auto begp = file.tellg();
-            file.seekg(0, std::ios::end);
-            auto endp = file.tellg();
-            file.seekg(0, std::ios::beg);
-            auto progress = loading_file{ file_name, {}, 0, endp - begp };
+            auto file_size = stream_size(file);
+            auto progress = loading_file{ file_name, {}, 0, file_size };
             auto content = text{}.transient();
             auto ln = std::wstring{};
-            auto lastp = begp;
-            auto currp = begp;
+            auto lastp = progress.loaded_bytes;
             // work-around gcc-7 bug
             // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
 #pragma GCC diagnostic push
@@ -85,12 +90,11 @@ auto load_file_effect(immer::box<std::string> file_name)
             while (std::getline(file, ln)) {
 #pragma GCC diagnostic pop
                 content.push_back({begin(ln), end(ln)});
-                currp += ln.size();
-                if (currp - lastp > progress_report_rate_bytes) {
+                progress.loaded_bytes += ln.size();
+                if (progress.loaded_bytes - lastp > progress_report_rate_bytes) {
                     progress.content = content.persistent();
-                    progress.loaded_bytes = currp - begp;
                     ctx.dispatch(load_progress_action{progress});
-                    lastp = currp;
+                    lastp = progress.loaded_bytes;
                 }
             }
             ctx.dispatch(load_done_action{{file_name, content.persistent()}});
