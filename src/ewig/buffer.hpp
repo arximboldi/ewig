@@ -63,9 +63,9 @@ struct loading_file
 };
 
 using file = std::variant<no_file,
-                         existing_file,
-                         loading_file,
-                         saving_file>;
+                          existing_file,
+                          loading_file,
+                          saving_file>;
 
 struct snapshot
 {
@@ -86,13 +86,17 @@ struct buffer
 
 struct load_progress_action { loading_file file; };
 struct load_done_action { existing_file file; };
+struct load_error_action { existing_file file; std::exception_ptr err; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
+struct save_error_action { existing_file file; std::exception_ptr err; };
 
 using buffer_action = std::variant<load_progress_action,
                                    load_done_action,
+                                   load_error_action,
                                    save_progress_action,
-                                   save_done_action>;
+                                   save_done_action,
+                                   save_error_action>;
 
 constexpr auto tab_width = 8;
 
@@ -100,11 +104,10 @@ bool io_in_progress(const buffer&);
 bool load_in_progress(const buffer&);
 bool is_dirty(const buffer& buf);
 
-buffer update_buffer(buffer buf, buffer_action ac);
+std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action ac);
 
 result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
 result<buffer, buffer_action> save_buffer(buffer buf);
-
 
 coord actual_cursor(buffer buf);
 coord actual_display_cursor(const buffer& buf);

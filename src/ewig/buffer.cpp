@@ -48,14 +48,37 @@ bool io_in_progress(const buffer& buf)
         !std::holds_alternative<no_file>(buf.from);
 }
 
-buffer update_buffer(buffer buf, buffer_action act)
+std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action act)
 {
+    using namespace std::string_literals;
+
     return scelta::match(
-        [&] (auto&& act) {
-            if (load_in_progress(buf))
-                buf.content = act.file.content;
+        [&] (load_progress_action& act) {
+            buf.content = act.file.content;
             buf.from = act.file;
-            return buf;
+            return std::pair{buf, ""s};
+        },
+        [&] (load_done_action& act) {
+            buf.content = act.file.content;
+            buf.from = act.file;
+            return std::pair{buf, "loaded: "s + act.file.name.get()};
+        },
+        [&] (load_error_action& act) {
+            buf.content = act.file.content;
+            buf.from = act.file;
+            return std::pair{buf, "error while loading: "s + act.file.name.get()};
+        },
+        [&] (save_progress_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, ""s};
+        },
+        [&] (save_done_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, "saved: "s + act.file.name.get()};
+        },
+        [&] (save_error_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, "error while saving: "s + act.file.name.get()};
         })(act);
 }
 
@@ -76,55 +99,70 @@ auto load_file_effect(immer::box<std::string> file_name)
 
     return [=] (auto& ctx) {
         ctx.async([=] {
-            auto file = std::wifstream{file_name};
-            file.exceptions(std::ifstream::badbit);
-            auto file_size = stream_size(file);
-            auto progress = loading_file{ file_name, {}, 0, file_size };
             auto content = text{}.transient();
-            auto ln = std::wstring{};
-            auto lastp = progress.loaded_bytes;
-            // work-around gcc-7 bug
-            // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            while (std::getline(file, ln)) {
-#pragma GCC diagnostic pop
-                content.push_back({begin(ln), end(ln)});
-                progress.loaded_bytes += ln.size();
-                if (progress.loaded_bytes - lastp > progress_report_rate_bytes) {
-                    progress.content = content.persistent();
-                    ctx.dispatch(load_progress_action{progress});
-                    lastp = progress.loaded_bytes;
+            auto file = std::wifstream{};
+            file.exceptions(std::fstream::badbit | std::fstream::failbit);
+            try {
+                file.open(file_name);
+                auto file_size = stream_size(file);
+                auto progress = loading_file{ file_name, {}, 0, file_size };
+                auto ln = std::wstring{};
+                auto lastp = progress.loaded_bytes;
+                for (;;) {
+                    std::getline(file, ln);
+                    content.push_back({begin(ln), end(ln)});
+                    progress.loaded_bytes += ln.size();
+                    if (progress.loaded_bytes - lastp >
+                        progress_report_rate_bytes) {
+                        progress.content = content.persistent();
+                        ctx.dispatch(load_progress_action{progress});
+                        lastp = progress.loaded_bytes;
+                    }
                 }
+            } catch (...) {
+                auto the_content = content.persistent();
+                ctx.dispatch(
+                    file.eof()
+                    ? buffer_action{load_done_action{{file_name, the_content}}}
+                    : buffer_action{load_error_action{{file_name, the_content},
+                                                      std::current_exception()}});
             }
-            ctx.dispatch(load_done_action{{file_name, content.persistent()}});
         });
     };
 }
 
-auto save_file_effect(immer::box<std::string> file_name, text content)
+auto save_file_effect(immer::box<std::string> file_name,
+                      text old_content,
+                      text new_content)
 {
     constexpr auto progress_report_rate_lines = (1 << 20) / 40;
 
     return [=] (auto& ctx) {
         ctx.async([=] {
-            using namespace std::chrono;
-            auto file = std::wofstream{file_name};
-            file.exceptions(std::ifstream::badbit);
-            auto lastp = std::size_t{};
-            auto progress = saving_file{ file_name, content, 0 };
-            immer::for_each(content, [&] (auto l) {
-                immer::for_each_chunk(l, [&] (auto first, auto last) {
-                    file.write(first, last - first);
+            auto progress = saving_file{ file_name, new_content, 0 };
+            auto file = std::wofstream{};
+            file.exceptions(std::fstream::badbit | std::fstream::failbit);
+            try {
+                file.open(file_name);
+                auto lastp = std::size_t{};
+                immer::for_each(new_content, [&] (auto l) {
+                    immer::for_each_chunk(l, [&] (auto first, auto last) {
+                        file.write(first, last - first);
+                    });
+                    file.put('\n');
+                    ++progress.saved_lines;
+                    if (progress.saved_lines - lastp > progress_report_rate_lines) {
+                        ctx.dispatch(save_progress_action{progress});
+                        lastp = progress.saved_lines;
+                    }
                 });
-                file.put('\n');
-                ++progress.saved_lines;
-                if (progress.saved_lines - lastp > progress_report_rate_lines) {
-                    ctx.dispatch(save_progress_action{progress});
-                    lastp = progress.saved_lines;
-                }
-            });
-            ctx.dispatch(save_done_action{{file_name, content}});
+                ctx.dispatch(save_done_action{{file_name, new_content}});
+            } catch (...) {
+                auto content = new_content.take(progress.saved_lines)
+                             + old_content.drop(progress.saved_lines);
+                ctx.dispatch(save_error_action{{file_name, content},
+                                               std::current_exception()});
+            }
         });
     };
 }
@@ -135,7 +173,7 @@ result<buffer, buffer_action> save_buffer(buffer buf)
 {
     auto file = std::get<existing_file>(buf.from);
     buf.from = saving_file{file.name, buf.content, {}};
-    return { buf, save_file_effect(file.name, buf.content) };
+    return { buf, save_file_effect(file.name, file.content, buf.content) };
 }
 
 result<buffer, buffer_action> load_buffer(buffer buf, const std::string& fname)

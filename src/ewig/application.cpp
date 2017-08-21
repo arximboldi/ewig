@@ -199,16 +199,9 @@ result<application, action> update(application state, action ev)
         },
         [&](const buffer_action& ev) -> result_t
         {
-            state.current = update_buffer(state.current, ev);
-            scelta::match(
-                [&](const load_done_action& act) {
-                    state = put_message(state, "loaded: " + act.file.name.get());
-                },
-                [&](const save_done_action& act) {
-                    state = put_message(state, "saved: " + act.file.name.get());
-                },
-                [](auto&&) {})(ev);
-            return state;
+            auto [buffer, msg] = update_buffer(state.current, ev);
+            state.current = buffer;
+            return put_message(state, msg);
         },
         [&](const resize_action& ev) -> result_t
         {
