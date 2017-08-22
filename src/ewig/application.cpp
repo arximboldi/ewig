@@ -161,16 +161,6 @@ application put_message(application state, immer::box<std::string> str)
     return state;
 }
 
-coord actual_cursor(buffer buf)
-{
-    return {
-        buf.cursor.row,
-        std::min(buf.cursor.row < (index)buf.content.size()
-                 ? (index)buf.content[buf.cursor.row].size() : 0,
-                 buf.cursor.col)
-    };
-}
-
 coord editor_size(application app)
 {
     return {app.window_size.row - 2, app.window_size.col};

@@ -21,6 +21,7 @@
 #include "ewig/draw.hpp"
 
 #include <scelta.hpp>
+#include <boost/locale/boundary/index.hpp>
 
 extern "C" {
 #include <ncursesw/ncurses.h>
@@ -35,26 +36,30 @@ namespace {
 // It takes into account tabs, expanding them correctly, and fills the
 // remaining until num_col with spaces.
 void display_line_fill(const line& ln, int first_col, int num_col,
-                       std::wstring& str)
+                       std::string& str)
 {
     using namespace std;
     auto cur_col = index{};
-    for (auto c : ln) {
-        if (num_col == (index)str.size())
+    auto idx = boost::locale::boundary::segment_index<line::iterator>{
+        boost::locale::boundary::character,
+        ln.begin(), ln.end()
+    };
+    for (auto&& s : idx) {
+        if (num_col == cur_col - first_col)
             return;
-        else if (c == '\t') {
+        else if (s.length() == 1 && *s.begin() == '\t') {
             auto next_col = cur_col + tab_width - (cur_col % tab_width);
             auto to_fill  = std::min(next_col, first_col + num_col) -
                             std::max(cur_col, first_col);
             std::fill_n(back_inserter(str), to_fill, ' ');
             cur_col = next_col;
         } else if (cur_col >= first_col) {
-            str.push_back(c);
+            std::copy(s.begin(), s.end(), back_inserter(str));
             ++cur_col;
         } else
             ++cur_col;
     }
-    std::fill_n(back_inserter(str), num_col - str.size(), ' ');
+    std::fill_n(back_inserter(str), num_col - (cur_col - first_col), ' ');
 }
 
 } // anonymous namespace
@@ -66,7 +71,7 @@ void draw_text(const buffer& buf, coord size)
     attrset(A_NORMAL);
     getyx(stdscr, col, row);
 
-    auto str      = std::wstring{};
+    auto str      = std::string{};
     auto first_ln = begin(buf.content) + min(buf.scroll.row,
                                              (index)buf.content.size());
     auto last_ln  = begin(buf.content) + min(size.row + buf.scroll.row,
@@ -75,6 +80,10 @@ void draw_text(const buffer& buf, coord size)
     auto [starts, ends] = selected_region(buf);
     starts.row -= buf.scroll.row;
     ends.row   -= buf.scroll.row;
+    starts.col = expand_tabs(get_line(buf.content, starts.row), starts.col)
+        - buf.scroll.col;
+    ends.col   = expand_tabs(get_line(buf.content, ends.row), ends.col)
+        - buf.scroll.col;
 
     immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
@@ -82,15 +91,15 @@ void draw_text(const buffer& buf, coord size)
         ::move(row, col);
         auto in_selection = row >= starts.row && row <= ends.row;
         if (in_selection) {
-            auto hl_first = row == starts.row ? starts.col : 0;
-            auto hl_last  = row == ends.row   ? ends.col   : size.col;
-            ::addnwstr(str.c_str(), hl_first);
+            auto hl_first = row == starts.row ? std::max(starts.col, 0) : 0;
+            auto hl_last  = row == ends.row   ? std::max(ends.col, 0) : size.col;
+            ::addnstr(str.c_str(), hl_first);
             ::attron(COLOR_PAIR(color::selection));
-            ::addnwstr(str.c_str() + hl_first, hl_last - hl_first);
+            ::addnstr(str.c_str() + hl_first, hl_last - hl_first);
             ::attroff(COLOR_PAIR(color::selection));
-            ::addnwstr(str.c_str() + hl_last, str.size() - hl_last);
+            ::addnstr(str.c_str() + hl_last, str.size() - hl_last);
         } else {
-            ::addwstr(str.c_str());
+            ::addstr(str.c_str());
         }
         row++;
     });
@@ -101,11 +110,12 @@ void draw_mode_line(const buffer& buf, index maxcol)
     attrset(A_REVERSE);
     auto dirty_mark = is_dirty(buf) ? "**" : "--";
     auto file_name = scelta::match([](auto&& f) { return f.name; })(buf.from);
+    auto cur = buf.cursor;
+    cur.col = expand_tabs(get_line(buf.content, cur.row), cur.col);
     ::printw(" %s %s  (%d, %d)",
             dirty_mark,
             file_name.get().c_str(),
-            buf.cursor.col,
-            buf.cursor.row);
+            cur.col, cur.row);
     ::hline(' ', maxcol);
 
     scelta::match(
@@ -141,12 +151,13 @@ void draw_message(const message& msg)
 
 void draw_text_cursor(const buffer& buf, coord window_size)
 {
-    auto cursor = actual_display_cursor(buf);
-    ::move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);
-    ::curs_set(cursor.col >= buf.scroll.col &&
-               cursor.row >= buf.scroll.row &&
-               cursor.col < buf.scroll.col + window_size.col &&
-               cursor.row < buf.scroll.row + window_size.row);
+    auto cur = buf.cursor;
+    cur.col = expand_tabs(get_line(buf.content, cur.row), cur.col);
+    ::move(cur.row - buf.scroll.row, cur.col - buf.scroll.col);
+    ::curs_set(cur.col >= buf.scroll.col &&
+               cur.row >= buf.scroll.row &&
+               cur.col < buf.scroll.col + window_size.col &&
+               cur.row < buf.scroll.row + window_size.row);
 }
 
 void draw(const application& app)

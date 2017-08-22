@@ -21,6 +21,8 @@
 #include "ewig/terminal.hpp"
 #include "ewig/draw.hpp"
 
+#include <boost/locale/generator.hpp>
+
 #include <iostream>
 
 namespace ewig {
@@ -73,7 +75,9 @@ void run(const std::string& fname)
 
 int main(int argc, char* argv[])
 {
-    std::locale::global(std::locale(""));
+    auto gen = boost::locale::generator{};
+    std::locale::global(gen(""));
+    ::setlocale(LC_ALL, "");
 
     if (argc != 2) {
         std::cerr << "give me a file name" << std::endl;

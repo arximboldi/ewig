@@ -32,7 +32,7 @@
 
 namespace ewig {
 
-using line = immer::flex_vector<wchar_t>;
+using line = immer::flex_vector<char>;
 using text = immer::flex_vector<line>;
 
 struct no_file
@@ -100,6 +100,20 @@ using buffer_action = std::variant<load_progress_action,
 
 constexpr auto tab_width = 8;
 
+/** Returns the number of actual characters in the line `ln` */
+index line_length(const line& ln);
+
+/** Returns the offsets where character `col` is located in `ln` */
+std::size_t line_char(const line& ln, index col);
+
+/**
+ * Returns the [begin, end) offsets where character `col` is located
+ * in the line `ln`.
+ */
+std::pair<std::size_t, std::size_t> line_char_region(const line& ln, index col);
+
+line get_line(const text& txt, index row);
+
 bool io_in_progress(const buffer&);
 bool load_in_progress(const buffer&);
 bool is_dirty(const buffer& buf);
@@ -109,10 +123,7 @@ std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action ac);
 result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
 result<buffer, buffer_action> save_buffer(buffer buf);
 
-coord actual_cursor(buffer buf);
-coord actual_display_cursor(const buffer& buf);
-
-index display_line_col(const line& ln, index col);
+index expand_tabs(const line& ln, index col);
 
 buffer page_up(buffer buf, coord size);
 buffer page_down(buffer buf, coord size);
