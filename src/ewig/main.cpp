@@ -21,8 +21,6 @@
 #include "ewig/terminal.hpp"
 #include "ewig/draw.hpp"
 
-#include <boost/locale/generator.hpp>
-
 #include <iostream>
 
 namespace ewig {
@@ -75,8 +73,7 @@ void run(const std::string& fname)
 
 int main(int argc, char* argv[])
 {
-    auto gen = boost::locale::generator{};
-    std::locale::global(gen(""));
+    std::locale::global(std::locale(""));
     ::setlocale(LC_ALL, "");
 
     if (argc != 2) {

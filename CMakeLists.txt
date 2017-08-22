@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 set(CMAKE_CXX_EXTENSIONS off)
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
-find_package(Boost 1.56 REQUIRED system locale)
+find_package(Boost 1.56 REQUIRED system)
 find_package(Threads)
 
 add_executable(ewig
@@ -21,6 +21,7 @@ target_include_directories(ewig PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/immer>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/scelta/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/utfcpp/source>
   $<INSTALL_INTERFACE:include>)
 target_include_directories(ewig SYSTEM PUBLIC
   ${Boost_INCLUDE_DIR})

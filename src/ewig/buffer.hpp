@@ -27,6 +27,9 @@
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
 
+#include <utf8.h>
+#include <boost/range/iterator_range.hpp>
+
 #include <optional>
 #include <variant>
 
@@ -111,6 +114,16 @@ std::size_t line_char(const line& ln, index col);
  * in the line `ln`.
  */
 std::pair<std::size_t, std::size_t> line_char_region(const line& ln, index col);
+
+/**
+ * Returns a range to iterate over the code points of a line.
+ */
+inline auto line_range(const line& ln)
+{
+    return boost::make_iterator_range(
+        utf8::unchecked::iterator(ln.begin()),
+        utf8::unchecked::iterator(ln.end()));
+}
 
 line get_line(const text& txt, index row);
 

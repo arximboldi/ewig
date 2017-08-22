@@ -25,9 +25,6 @@
 
 #include <scelta.hpp>
 
-#include <boost/locale/encoding.hpp>
-#include <boost/locale/boundary/index.hpp>
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -107,14 +104,23 @@ auto load_file_effect(immer::box<std::string> file_name)
             file.exceptions(std::fstream::badbit | std::fstream::failbit);
             try {
                 file.open(file_name);
+                file.exceptions(std::fstream::badbit);
                 auto file_size = stream_size(file);
-                auto progress = loading_file{ file_name, {}, 0, file_size };
-                auto ln = std::string{};
+                auto progress  = loading_file{ file_name, {}, 0, file_size };
+                auto ln1       = std::string{};
+                auto ln2       = std::string{};
                 auto lastp = progress.loaded_bytes;
-                for (;;) {
-                    std::getline(file, ln);
-                    content.push_back({begin(ln), end(ln)});
-                    progress.loaded_bytes += ln.size();
+                // work-around gcc-7 bug
+                // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+                while (std::getline(file, ln1)) {
+#pragma GCC diagnostic pop
+                    ln2.clear();
+                    utf8::replace_invalid(ln1.begin(), ln1.end(),
+                                         std::back_inserter(ln2));
+                    content.push_back({begin(ln2), end(ln2)});
+                    progress.loaded_bytes += ln1.size();
                     if (progress.loaded_bytes - lastp >
                         progress_report_rate_bytes) {
                         progress.content = content.persistent();
@@ -122,13 +128,10 @@ auto load_file_effect(immer::box<std::string> file_name)
                         lastp = progress.loaded_bytes;
                     }
                 }
+                ctx.dispatch(load_done_action{{file_name, content.persistent()}});
             } catch (...) {
-                auto the_content = content.persistent();
-                ctx.dispatch(
-                    file.eof()
-                    ? buffer_action{load_done_action{{file_name, the_content}}}
-                    : buffer_action{load_error_action{{file_name, the_content},
-                                                      std::current_exception()}});
+                ctx.dispatch(load_error_action{{file_name, content.persistent()},
+                                               std::current_exception()});
             }
         });
     };
@@ -199,63 +202,37 @@ line get_line(const text& txt, index row)
 
 index line_length(const line& ln)
 {
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.end()
-    };
-    return std::distance(idx.begin(), idx.end());
+    return utf8::unchecked::distance(ln.begin(), ln.end());
 }
 
 std::size_t line_char(const line& ln, index col)
 {
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.end()
-    };
-    auto iter = idx.begin();
-    while (col --> 0 && iter != idx.end()) ++iter;
-    return iter->begin().index();
+    auto fst = ln.begin();
+    auto lst = ln.end();
+    while (col --> 0 && fst != lst)
+        utf8::unchecked::next(fst);
+    return fst.index();
 }
 
 std::pair<std::size_t, std::size_t> line_char_region(const line& ln, index col)
 {
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.end()
-    };
-    auto iter = idx.begin();
-    while (col --> 0 && iter != idx.end()) ++iter;
-    return { iter->begin().index(), iter->end().index() };
-}
-
-index display_line_col(const line& ln, index col)
-{
-    using namespace std;
-    auto cur_col = index{};
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.begin() + col
-    };
-    for (auto&& s : idx) {
-        if (s.length() == 1 && *s.begin() == '\t') {
-            cur_col += tab_width - (cur_col % tab_width);
-        } else
-            ++cur_col;
-    }
-    return cur_col;
+    auto fst = ln.begin();
+    auto lst = ln.end();
+    while (col --> 0 && fst != lst)
+        utf8::unchecked::next(fst);
+    auto prv = fst;
+    if (fst != lst)
+        utf8::unchecked::next(fst);
+    return { prv.index(), fst.index() };
 }
 
 index expand_tabs(const line& ln, index col)
 {
     using namespace std;
     auto cur_col = index{};
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.end()
-    };
-    for (auto&& s : idx) {
+    for (auto c : line_range(ln)) {
         if (col-- <= 0) break;
-        if (s.length() == 1 && *s.begin() == '\t') {
+        if (c == '\t') {
             cur_col += tab_width - (cur_col % tab_width);
         } else
             ++cur_col;
@@ -405,19 +382,25 @@ buffer insert_tab(buffer buf)
 
 buffer insert_char(buffer buf, wchar_t value)
 {
-    using boost::locale::conv::from_utf;
-    auto cur   = buf.cursor;
-    auto chars = from_utf(&value, &value + 1, std::locale());
-    auto ln    = line{chars.begin(), chars.end()};
-    if (cur.row == (index)buf.content.size()) {
-        buf.content = buf.content.push_back(ln);
-    } else {
-        buf.content = buf.content.update(cur.row, [&] (auto l) {
-            return l.insert(line_char(l, cur.col), ln);
-        });
+    try {
+        auto cur   = buf.cursor;
+        auto ln    = [&] {
+            auto ln = line{}.transient();
+            utf8::append(value, std::back_inserter(ln));
+            return ln.persistent();
+        } ();
+        if (cur.row == (index)buf.content.size()) {
+            buf.content = buf.content.push_back(ln);
+        } else {
+            buf.content = buf.content.update(cur.row, [&] (auto l) {
+                return l.insert(line_char(l, cur.col), ln);
+            });
+        }
+        buf.cursor.col = cur.col + 1;
+        return buf;
+    } catch (const utf8::invalid_code_point&) {
+        return buf;
     }
-    buf.cursor.col = cur.col + 1;
-    return buf;
 }
 
 buffer delete_char(buffer buf)

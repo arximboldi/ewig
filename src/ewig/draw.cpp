@@ -21,7 +21,6 @@
 #include "ewig/draw.hpp"
 
 #include <scelta.hpp>
-#include <boost/locale/boundary/index.hpp>
 
 extern "C" {
 #include <ncursesw/ncurses.h>
@@ -36,30 +35,38 @@ namespace {
 // It takes into account tabs, expanding them correctly, and fills the
 // remaining until num_col with spaces.
 void display_line_fill(const line& ln, int first_col, int num_col,
-                       std::string& str)
+                       std::wstring& str)
 {
     using namespace std;
     auto cur_col = index{};
-    auto idx = boost::locale::boundary::segment_index<line::iterator>{
-        boost::locale::boundary::character,
-        ln.begin(), ln.end()
-    };
-    for (auto&& s : idx) {
+    for (auto c : line_range(ln)) {
         if (num_col == cur_col - first_col)
             return;
-        else if (s.length() == 1 && *s.begin() == '\t') {
+        else if (c == '\t') {
             auto next_col = cur_col + tab_width - (cur_col % tab_width);
             auto to_fill  = std::min(next_col, first_col + num_col) -
                             std::max(cur_col, first_col);
             std::fill_n(back_inserter(str), to_fill, ' ');
             cur_col = next_col;
         } else if (cur_col >= first_col) {
-            std::copy(s.begin(), s.end(), back_inserter(str));
+            str.push_back(c);
             ++cur_col;
         } else
             ++cur_col;
     }
     std::fill_n(back_inserter(str), num_col - (cur_col - first_col), ' ');
+}
+
+std::pair<coord, coord> display_selected_region(const buffer& buf)
+{
+    auto [starts, ends] = selected_region(buf);
+    starts.col  = expand_tabs(get_line(buf.content, starts.row), starts.col);
+    ends.col    = expand_tabs(get_line(buf.content, ends.row), ends.col);
+    starts.row -= buf.scroll.row;
+    ends.row   -= buf.scroll.row;
+    starts.col -= buf.scroll.col;
+    ends.col   -= buf.scroll.col;
+    return {starts, ends};
 }
 
 } // anonymous namespace
@@ -71,35 +78,28 @@ void draw_text(const buffer& buf, coord size)
     attrset(A_NORMAL);
     getyx(stdscr, col, row);
 
-    auto str      = std::string{};
+    auto str      = std::wstring{};
     auto first_ln = begin(buf.content) + min(buf.scroll.row,
                                              (index)buf.content.size());
     auto last_ln  = begin(buf.content) + min(size.row + buf.scroll.row,
                                              (index)buf.content.size());
-
-    auto [starts, ends] = selected_region(buf);
-    starts.row -= buf.scroll.row;
-    ends.row   -= buf.scroll.row;
-    starts.col = expand_tabs(get_line(buf.content, starts.row), starts.col)
-        - buf.scroll.col;
-    ends.col   = expand_tabs(get_line(buf.content, ends.row), ends.col)
-        - buf.scroll.col;
+    auto [starts, ends] = display_selected_region(buf);
 
     immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
-        display_line_fill(ln, buf.scroll.col + col, size.col, str);
+        display_line_fill(ln, buf.scroll.col + col, 2*size.col, str);
         ::move(row, col);
         auto in_selection = row >= starts.row && row <= ends.row;
         if (in_selection) {
             auto hl_first = row == starts.row ? std::max(starts.col, 0) : 0;
-            auto hl_last  = row == ends.row   ? std::max(ends.col, 0) : size.col;
-            ::addnstr(str.c_str(), hl_first);
+            auto hl_last  = row == ends.row   ? std::max(ends.col, 0) : str.size();
+            ::addnwstr(str.c_str(), hl_first);
             ::attron(COLOR_PAIR(color::selection));
-            ::addnstr(str.c_str() + hl_first, hl_last - hl_first);
+            ::addnwstr(str.c_str() + hl_first, hl_last - hl_first);
             ::attroff(COLOR_PAIR(color::selection));
-            ::addnstr(str.c_str() + hl_last, str.size() - hl_last);
+            ::addnwstr(str.c_str() + hl_last, str.size() - hl_last);
         } else {
-            ::addstr(str.c_str());
+            ::addwstr(str.c_str());
         }
         row++;
     });
