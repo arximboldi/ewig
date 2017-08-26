@@ -318,7 +318,8 @@ buffer move_cursor_left(buffer buf)
     } else  {
         --buf.cursor.col;
         auto new_chr = line_char(ln, buf.cursor.col);
-        if (chr == new_chr) new_chr = line_length(ln);
+        if (chr == new_chr)
+            buf.cursor.col = line_length(ln) - 1;
     }
     return buf;
 }
