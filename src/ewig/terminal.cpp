@@ -45,6 +45,7 @@ terminal::terminal(boost::asio::io_service& serv)
     ::raw();
     ::noecho();
     ::keypad(stdscr, true);
+    ::nodelay(stdscr, true);
 
     ::start_color();
     ::use_default_colors();
@@ -97,9 +98,11 @@ void terminal::next_key_()
     input_.async_read_some(null_buffers(), [&] (auto ec, auto) {
         if (!ec) {
             auto key = wint_t{};
-            auto res = ::wget_wch(win_.get(), &key);
-            next_key_();
-            handler_(key_action{{res, key}});
+            auto res = int{};
+            while (ERR != (res = ::wget_wch(win_.get(), &key))) {
+                next_key_();
+                handler_(key_action{{res, key}});
+            }
         }
     });
 }
@@ -110,7 +113,6 @@ void terminal::cleanup_fn::operator() (WINDOW* win) const
         // consume all remaining characters from the terminal so they
         // don't leak in the bash prompt after quitting, then restore
         // the terminal state
-        ::nodelay(win, TRUE);
         auto key = wint_t{};
         while (::get_wch(&key) != ERR);
         ::endwin();

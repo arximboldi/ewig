@@ -21,6 +21,7 @@ target_include_directories(ewig PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/immer>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/scelta/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/utfcpp/source>
   $<INSTALL_INTERFACE:include>)
 target_include_directories(ewig SYSTEM PUBLIC
   ${Boost_INCLUDE_DIR})

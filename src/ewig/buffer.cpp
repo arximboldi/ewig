@@ -48,18 +48,50 @@ bool io_in_progress(const buffer& buf)
         !std::holds_alternative<no_file>(buf.from);
 }
 
-buffer update_buffer(buffer buf, buffer_action act)
+std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action act)
 {
+    using namespace std::string_literals;
+
     return scelta::match(
-        [&] (auto&& act) {
-            if (load_in_progress(buf))
-                buf.content = act.file.content;
+        [&] (load_progress_action& act) {
+            buf.content = act.file.content;
             buf.from = act.file;
-            return buf;
+            return std::pair{buf, ""s};
+        },
+        [&] (load_done_action& act) {
+            buf.content = act.file.content;
+            buf.from = act.file;
+            return std::pair{buf, "loaded: "s + act.file.name.get()};
+        },
+        [&] (load_error_action& act) {
+            buf.content = act.file.content;
+            buf.from = act.file;
+            return std::pair{buf, "error while loading: "s + act.file.name.get()};
+        },
+        [&] (save_progress_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, ""s};
+        },
+        [&] (save_done_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, "saved: "s + act.file.name.get()};
+        },
+        [&] (save_error_action& act) {
+            buf.from = act.file;
+            return std::pair{buf, "error while saving: "s + act.file.name.get()};
         })(act);
 }
 
 namespace {
+
+std::streamoff stream_size(std::istream& file)
+{
+    auto begp = file.tellg();
+    file.seekg(0, std::ios::end);
+    auto endp = file.tellg();
+    file.seekg(begp, std::ios::beg);
+    return endp - begp;
+}
 
 auto load_file_effect(immer::box<std::string> file_name)
 {
@@ -67,60 +99,76 @@ auto load_file_effect(immer::box<std::string> file_name)
 
     return [=] (auto& ctx) {
         ctx.async([=] {
-            auto file = std::wifstream{file_name};
-            file.exceptions(std::ifstream::badbit);
-            auto begp = file.tellg();
-            file.seekg(0, std::ios::end);
-            auto endp = file.tellg();
-            file.seekg(0, std::ios::beg);
-            auto progress = loading_file{ file_name, {}, 0, endp - begp };
             auto content = text{}.transient();
-            auto ln = std::wstring{};
-            auto lastp = begp;
-            auto currp = begp;
-            // work-around gcc-7 bug
-            // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
+            auto file = std::ifstream{};
+            file.exceptions(std::fstream::badbit | std::fstream::failbit);
+            try {
+                file.open(file_name);
+                file.exceptions(std::fstream::badbit);
+                auto file_size = stream_size(file);
+                auto progress  = loading_file{ file_name, {}, 0, file_size };
+                auto ln1       = std::string{};
+                auto ln2       = std::string{};
+                auto lastp = progress.loaded_bytes;
+                // work-around gcc-7 bug
+                // https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg533664.html
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            while (std::getline(file, ln)) {
+                while (std::getline(file, ln1)) {
 #pragma GCC diagnostic pop
-                content.push_back({begin(ln), end(ln)});
-                currp += ln.size();
-                if (currp - lastp > progress_report_rate_bytes) {
-                    progress.content = content.persistent();
-                    progress.loaded_bytes = currp - begp;
-                    ctx.dispatch(load_progress_action{progress});
-                    lastp = currp;
+                    ln2.clear();
+                    utf8::replace_invalid(ln1.begin(), ln1.end(),
+                                         std::back_inserter(ln2));
+                    content.push_back({begin(ln2), end(ln2)});
+                    progress.loaded_bytes += ln1.size();
+                    if (progress.loaded_bytes - lastp >
+                        progress_report_rate_bytes) {
+                        progress.content = content.persistent();
+                        ctx.dispatch(load_progress_action{progress});
+                        lastp = progress.loaded_bytes;
+                    }
                 }
+                ctx.dispatch(load_done_action{{file_name, content.persistent()}});
+            } catch (...) {
+                ctx.dispatch(load_error_action{{file_name, content.persistent()},
+                                               std::current_exception()});
             }
-            ctx.dispatch(load_done_action{{file_name, content.persistent()}});
         });
     };
 }
 
-auto save_file_effect(immer::box<std::string> file_name, text content)
+auto save_file_effect(immer::box<std::string> file_name,
+                      text old_content,
+                      text new_content)
 {
     constexpr auto progress_report_rate_lines = (1 << 20) / 40;
 
     return [=] (auto& ctx) {
         ctx.async([=] {
-            using namespace std::chrono;
-            auto file = std::wofstream{file_name};
-            file.exceptions(std::ifstream::badbit);
-            auto lastp = std::size_t{};
-            auto progress = saving_file{ file_name, content, 0 };
-            immer::for_each(content, [&] (auto l) {
-                immer::for_each_chunk(l, [&] (auto first, auto last) {
-                    file.write(first, last - first);
+            auto progress = saving_file{ file_name, new_content, 0 };
+            auto file = std::ofstream{};
+            file.exceptions(std::fstream::badbit | std::fstream::failbit);
+            try {
+                file.open(file_name);
+                auto lastp = std::size_t{};
+                immer::for_each(new_content, [&] (auto l) {
+                    immer::for_each_chunk(l, [&] (auto first, auto last) {
+                        file.write(first, last - first);
+                    });
+                    file.put('\n');
+                    ++progress.saved_lines;
+                    if (progress.saved_lines - lastp > progress_report_rate_lines) {
+                        ctx.dispatch(save_progress_action{progress});
+                        lastp = progress.saved_lines;
+                    }
                 });
-                file.put('\n');
-                ++progress.saved_lines;
-                if (progress.saved_lines - lastp > progress_report_rate_lines) {
-                    ctx.dispatch(save_progress_action{progress});
-                    lastp = progress.saved_lines;
-                }
-            });
-            ctx.dispatch(save_done_action{{file_name, content}});
+                ctx.dispatch(save_done_action{{file_name, new_content}});
+            } catch (...) {
+                auto content = new_content.take(progress.saved_lines)
+                             + old_content.drop(progress.saved_lines);
+                ctx.dispatch(save_error_action{{file_name, content},
+                                               std::current_exception()});
+            }
         });
     };
 }
@@ -131,7 +179,7 @@ result<buffer, buffer_action> save_buffer(buffer buf)
 {
     auto file = std::get<existing_file>(buf.from);
     buf.from = saving_file{file.name, buf.content, {}};
-    return { buf, save_file_effect(file.name, buf.content) };
+    return { buf, save_file_effect(file.name, file.content, buf.content) };
 }
 
 result<buffer, buffer_action> load_buffer(buffer buf, const std::string& fname)
@@ -147,25 +195,49 @@ bool is_dirty(const buffer& buf)
         (buf.from);
 }
 
-index display_line_col(const line& ln, index col)
+line get_line(const text& txt, index row)
+{
+    return row >= 0 && row < (index)txt.size() ? txt[row] : line{};
+}
+
+index line_length(const line& ln)
+{
+    return utf8::unchecked::distance(ln.begin(), ln.end());
+}
+
+std::size_t line_char(const line& ln, index col)
+{
+    auto fst = ln.begin();
+    auto lst = ln.end();
+    while (col --> 0 && fst != lst)
+        utf8::unchecked::next(fst);
+    return fst.index();
+}
+
+std::pair<std::size_t, std::size_t> line_char_region(const line& ln, index col)
+{
+    auto fst = ln.begin();
+    auto lst = ln.end();
+    while (col --> 0 && fst != lst)
+        utf8::unchecked::next(fst);
+    auto prv = fst;
+    if (fst != lst)
+        utf8::unchecked::next(fst);
+    return { prv.index(), fst.index() };
+}
+
+index expand_tabs(const line& ln, index col)
 {
     using namespace std;
     auto cur_col = index{};
-    immer::for_each(begin(ln), begin(ln) + col, [&] (auto c) {
+    for (auto c : line_range(ln)) {
+        if (col-- <= 0) break;
         if (c == '\t') {
             cur_col += tab_width - (cur_col % tab_width);
         } else
             ++cur_col;
-    });
+    }
     return cur_col;
-}
-
-coord actual_display_cursor(const buffer& buf)
-{
-    auto cursor = actual_cursor(buf);
-    if (cursor.row < (index)buf.content.size())
-        cursor.col = display_line_col(buf.content[cursor.row], cursor.col);
-    return cursor;
 }
 
 buffer page_up(buffer buf, coord size)
@@ -217,7 +289,7 @@ buffer move_line_start(buffer buf)
 buffer move_line_end(buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size())
-        buf.cursor.col = buf.content[buf.cursor.row].size();
+        buf.cursor.col = line_length(buf.content[buf.cursor.row]);
     return buf;
 }
 
@@ -235,36 +307,42 @@ buffer move_buffer_end(buffer buf)
 
 buffer move_cursor_left(buffer buf)
 {
-    auto cur = actual_cursor(buf);
-    if (cur.col - 1 < 0) {
+    auto cur = buf.cursor;
+    auto ln  = get_line(buf.content, cur.row);
+    auto chr = line_char(ln, cur.col);
+    if (chr == 0) {
         if (cur.row > 0) {
             buf.cursor.row -= 1;
-            buf.cursor.col = buf.cursor.row < (index)buf.content.size()
-                           ? (index)buf.content[buf.cursor.row].size() : 0;
+            buf.cursor.col = line_length(get_line(buf.content, buf.cursor.row));
         }
     } else  {
-        buf.cursor.col = std::max(0, cur.col - 1);
+        --buf.cursor.col;
+        auto new_chr = line_char(ln, buf.cursor.col);
+        if (chr == new_chr)
+            buf.cursor.col = line_length(ln) - 1;
     }
     return buf;
 }
 
 buffer move_cursor_right(buffer buf)
 {
-    auto cur = actual_cursor(buf);
-    auto max = buf.cursor.row < (index)buf.content.size()
-             ? (index)buf.content[buf.cursor.row].size() : 0;
-    if (cur.col + 1 > max) {
+    auto cur     = buf.cursor;
+    auto ln      = get_line(buf.content, cur.row);
+    auto chr     = line_char(ln, cur.col);
+    auto new_chr = line_char(ln, cur.col + 1);
+    if (chr == new_chr) {
         buf = move_cursor_down(buf);
         buf.cursor.col = 0;
     } else {
-        buf.cursor.col = std::max(0, buf.cursor.col + 1);
+        ++buf.cursor.col;
     }
     return buf;
 }
 
 buffer scroll_to_cursor(buffer buf, coord wsize)
 {
-    auto cur = actual_display_cursor(buf);
+    auto cur = buf.cursor;
+    cur.col = expand_tabs(get_line(buf.content, cur.row), cur.col);
     if (cur.row >= wsize.row + buf.scroll.row) {
         buf.scroll.row = cur.row - wsize.row + 1;
     } else if (cur.row < buf.scroll.row) {
@@ -280,17 +358,17 @@ buffer scroll_to_cursor(buffer buf, coord wsize)
 
 buffer insert_new_line(buffer buf)
 {
-    auto cur = actual_cursor(buf);
+    auto cur = buf.cursor;
     if (cur.row == (index)buf.content.size()) {
         buf.content = buf.content.push_back({});
         return move_cursor_down(buf);
     } else {
         auto ln = buf.content[cur.row];
-        if (cur.row + 1 < (index)buf.content.size() ||
-            cur.col + 1 < (index)ln.size()) {
+        auto chr = line_char(ln, cur.col);
+        if (cur.row + 1 < (index)buf.content.size() || chr + 1 < ln.size()) {
             buf.content = buf.content
-                .set(cur.row, ln.take(cur.col))
-                .insert(cur.row + 1, ln.drop(cur.col));
+                .set(cur.row, ln.take(chr))
+                .insert(cur.row + 1, ln.drop(chr));
         }
         buf = move_cursor_down(buf);
         buf.cursor.col = 0;
@@ -305,12 +383,17 @@ buffer insert_tab(buffer buf)
 
 buffer insert_char(buffer buf, wchar_t value)
 {
-    auto cur = actual_cursor(buf);
+    auto cur   = buf.cursor;
+    auto ln    = [&] {
+        auto ln = line{}.transient();
+        utf8::append(value, std::back_inserter(ln));
+        return ln.persistent();
+    } ();
     if (cur.row == (index)buf.content.size()) {
-        buf.content = buf.content.push_back({value});
+        buf.content = buf.content.push_back(ln);
     } else {
         buf.content = buf.content.update(cur.row, [&] (auto l) {
-            return l.insert(cur.col, value);
+            return l.insert(line_char(l, cur.col), ln);
         });
     }
     buf.cursor.col = cur.col + 1;
@@ -319,50 +402,39 @@ buffer insert_char(buffer buf, wchar_t value)
 
 buffer delete_char(buffer buf)
 {
-    auto cur = actual_cursor(buf);
-
-    if (cur.col >= 1) {
+    auto cur = buf.cursor;
+    buf = move_cursor_left(buf);
+    if (cur.col != buf.cursor.col && cur.row == buf.cursor.row) {
         buf.content = buf.content.update(cur.row, [&] (auto l) {
-            return l.erase(cur.col - 1);
+            auto [fst, lst] = line_char_region(l, buf.cursor.col);
+            return l.erase(fst, lst);
         });
-        buf.cursor.col = cur.col - 1;
-    } else if (cur.col == 0 && cur.row > 0) {
+    } else if (cur.row > 0) {
         auto ln1 = buf.content[cur.row - 1];
         if (cur.row < (index)buf.content.size()) {
             buf.content = buf.content
                 .update(cur.row, [&] (auto ln2) { return ln1 + ln2; })
                 .erase(cur.row - 1);
         }
-        buf.cursor.row --;
-        buf.cursor.col = ln1.size();
     }
     return buf;
 }
 
 buffer delete_char_right(buffer buf)
 {
-    auto cur = actual_cursor(buf);
-
-    if (cur.col < (index)buf.content[cur.row].size()) {
-        buf.content = buf.content.update(cur.row, [&] (auto l) {
-            return l.erase(cur.col);
-        });
-    } else if (cur.row + 1 < (index)buf.content.size()) {
-        auto ln2 = buf.content[cur.row + 1];
-        buf.content = buf.content
-            .update(cur.row, [&] (auto ln1) { return ln1 + ln2; })
-            .erase(cur.row + 1);
-    }
-    return buf;
+    auto cur = buf.cursor;
+    buf = move_cursor_right(buf);
+    return cur == buf.cursor ? buf : delete_char(buf);
 }
 
 std::pair<buffer, text> cut_rest(buffer buf)
 {
     if (buf.cursor.row < (index)buf.content.size()) {
-        auto ln = buf.content[buf.cursor.row];
-        if (buf.cursor.col < (index)ln.size()) {
-            buf.content = buf.content.set(buf.cursor.row, ln.take(buf.cursor.col));
-            return {buf, {ln.drop(buf.cursor.col)}};
+        auto ln  = buf.content[buf.cursor.row];
+        auto chr = line_char(ln, buf.cursor.col);
+        if (chr < ln.size()) {
+            buf.content = buf.content.set(buf.cursor.row, ln.take(chr));
+            return {buf, {ln.drop(chr)}};
         } else {
             // Delete the end of line to join with previous line
             return {delete_char_right(buf), {{}, {}}};
@@ -374,24 +446,24 @@ std::pair<buffer, text> cut_rest(buffer buf)
 
 buffer insert_text(buffer buf, text paste)
 {
-    auto cur = actual_cursor(buf);
+    auto cur = buf.cursor;
     if (cur.row < (index)buf.content.size()) {
         auto ln1 = buf.content[cur.row];
-        buf.content = buf.content.set(cur.row,
-                                      ln1.take(cur.col) + paste[0]);
+        auto chr = line_char(ln1, cur.col);
+        buf.content = buf.content.set(cur.row, ln1.take(chr) + paste[0]);
         buf.content = buf.content.take(cur.row + 1)
             + paste.drop(1)
             + buf.content.drop(cur.row + 1);
         auto ln2 = buf.content[cur.row + paste.size() - 1];
         buf.content = buf.content.set(cur.row + paste.size() - 1,
-                                      ln2 + ln1.drop(cur.col));
+                                      ln2 + ln1.drop(chr));
     } else {
         buf.content = buf.content + paste;
     }
     buf.cursor.row = cur.row + paste.size() - 1;
     buf.cursor.col = paste.size() > 1
-        ? paste.back().size()
-        : cur.col + paste.back().size();
+        ? line_length(paste.back())
+        : cur.col + line_length(paste.back());
     return buf;
 }
 
@@ -406,13 +478,13 @@ text selected_text(buffer buf)
             (ends.row == (index)buf.content.size()
                 ? buf.content.push_back({})
                 : buf.content)
-            .take(ends.row+1)
+            .take(ends.row + 1)
             .drop(starts.row)
             .update(ends.row-starts.row, [&] (auto l) {
-                return l.take(ends.col);
+                return l.take(line_char(l, ends.col));
             })
             .update(0, [&] (auto l) {
-                return l.drop(starts.col);
+                return l.drop(line_char(l, starts.col));
             });
 }
 
@@ -427,18 +499,19 @@ std::pair<buffer, text> cut(buffer buf)
                 ? buf.content.push_back({}) // add the imaginary line
                 : buf.content;
             buf.content = content
-                .take(starts.row+1)
-                .update(starts.row, [&] (auto l) {
-                    return l.take(starts.col) + content[ends.row].drop(ends.col);
+                .take(starts.row + 1)
+                .update(starts.row, [&] (auto l1) {
+                    auto l2 = content[ends.row];
+                    return l1.take(line_char(l1, starts.col))
+                        +  l2.drop(line_char(l2, ends.col));
                 })
-              + buf.content
-                .drop(ends.row+1);
+              + buf.content.drop(ends.row + 1);
         } else {
             buf.content = buf.content.update(starts.row, [&] (auto l) {
-                return l.take(starts.col) + l.drop(ends.col);
+                return l.take(line_char(l, starts.col))
+                    +  l.drop(line_char(l, ends.col));
             });
         }
-
         buf.cursor = starts;
     }
 
@@ -455,7 +528,7 @@ std::pair<buffer, text> copy(buffer buf)
 
 buffer start_selection(buffer buf)
 {
-    auto cur = actual_cursor(buf);
+    auto cur = buf.cursor;
     buf.selection_start = cur;
     return buf;
 }
@@ -476,13 +549,11 @@ buffer clear_selection(buffer buf)
 std::tuple<coord, coord> selected_region(buffer buf)
 {
     if (buf.selection_start) {
-        auto cursor = actual_cursor(buf);
+        auto cursor = buf.cursor;
         auto starts = std::min(cursor, *buf.selection_start);
         auto ends   = std::max(cursor, *buf.selection_start);
-        starts.col = starts.row < (index)buf.content.size()
-                                  ? display_line_col(buf.content[starts.row], starts.col) : 0;
-        ends.col   = ends.row < (index)buf.content.size()
-                                ? display_line_col(buf.content[ends.row], ends.col) : 0;
+        starts.col = starts.row < (index)buf.content.size() ? starts.col : 0;
+        ends.col   = ends.row < (index)buf.content.size() ? ends.col : 0;
         return {starts, ends};
     } else {
         return {};

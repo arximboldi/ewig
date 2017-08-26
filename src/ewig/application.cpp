@@ -161,16 +161,6 @@ application put_message(application state, immer::box<std::string> str)
     return state;
 }
 
-coord actual_cursor(buffer buf)
-{
-    return {
-        buf.cursor.row,
-        std::min(buf.cursor.row < (index)buf.content.size()
-                 ? (index)buf.content[buf.cursor.row].size() : 0,
-                 buf.cursor.col)
-    };
-}
-
 coord editor_size(application app)
 {
     return {app.window_size.row - 2, app.window_size.col};
@@ -199,16 +189,9 @@ result<application, action> update(application state, action ev)
         },
         [&](const buffer_action& ev) -> result_t
         {
-            state.current = update_buffer(state.current, ev);
-            scelta::match(
-                [&](const load_done_action& act) {
-                    state = put_message(state, "loaded: " + act.file.name.get());
-                },
-                [&](const save_done_action& act) {
-                    state = put_message(state, "saved: " + act.file.name.get());
-                },
-                [](auto&&) {})(ev);
-            return state;
+            auto [buffer, msg] = update_buffer(state.current, ev);
+            state.current = buffer;
+            return put_message(state, msg);
         },
         [&](const resize_action& ev) -> result_t
         {

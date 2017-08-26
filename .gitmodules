@@ -4,3 +4,6 @@
 [submodule "deps/scelta"]
 	path = deps/scelta
 	url = https://github.com/SuperV1234/scelta.git
+[submodule "deps/utfcpp"]
+	path = deps/utfcpp
+	url = https://github.com/nemtrif/utfcpp.git

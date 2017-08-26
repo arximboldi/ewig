@@ -27,12 +27,15 @@
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
 
+#include <utf8.h>
+#include <boost/range/iterator_range.hpp>
+
 #include <optional>
 #include <variant>
 
 namespace ewig {
 
-using line = immer::flex_vector<wchar_t>;
+using line = immer::flex_vector<char>;
 using text = immer::flex_vector<line>;
 
 struct no_file
@@ -63,9 +66,9 @@ struct loading_file
 };
 
 using file = std::variant<no_file,
-                         existing_file,
-                         loading_file,
-                         saving_file>;
+                          existing_file,
+                          loading_file,
+                          saving_file>;
 
 struct snapshot
 {
@@ -86,30 +89,54 @@ struct buffer
 
 struct load_progress_action { loading_file file; };
 struct load_done_action { existing_file file; };
+struct load_error_action { existing_file file; std::exception_ptr err; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
+struct save_error_action { existing_file file; std::exception_ptr err; };
 
 using buffer_action = std::variant<load_progress_action,
                                    load_done_action,
+                                   load_error_action,
                                    save_progress_action,
-                                   save_done_action>;
+                                   save_done_action,
+                                   save_error_action>;
 
 constexpr auto tab_width = 8;
+
+/** Returns the number of actual characters in the line `ln` */
+index line_length(const line& ln);
+
+/** Returns the offsets where character `col` is located in `ln` */
+std::size_t line_char(const line& ln, index col);
+
+/**
+ * Returns the [begin, end) offsets where character `col` is located
+ * in the line `ln`.
+ */
+std::pair<std::size_t, std::size_t> line_char_region(const line& ln, index col);
+
+/**
+ * Returns a range to iterate over the code points of a line.
+ */
+inline auto line_range(const line& ln)
+{
+    return boost::make_iterator_range(
+        utf8::unchecked::iterator(ln.begin()),
+        utf8::unchecked::iterator(ln.end()));
+}
+
+line get_line(const text& txt, index row);
 
 bool io_in_progress(const buffer&);
 bool load_in_progress(const buffer&);
 bool is_dirty(const buffer& buf);
 
-buffer update_buffer(buffer buf, buffer_action ac);
+std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action ac);
 
 result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
 result<buffer, buffer_action> save_buffer(buffer buf);
 
-
-coord actual_cursor(buffer buf);
-coord actual_display_cursor(const buffer& buf);
-
-index display_line_col(const line& ln, index col);
+index expand_tabs(const line& ln, index col);
 
 buffer page_up(buffer buf, coord size);
 buffer page_down(buffer buf, coord size);

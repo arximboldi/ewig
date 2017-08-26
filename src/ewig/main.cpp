@@ -74,6 +74,7 @@ void run(const std::string& fname)
 int main(int argc, char* argv[])
 {
     std::locale::global(std::locale(""));
+    ::setlocale(LC_ALL, "");
 
     if (argc != 2) {
         std::cerr << "give me a file name" << std::endl;

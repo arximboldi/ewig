@@ -39,8 +39,8 @@ void display_line_fill(const line& ln, int first_col, int num_col,
 {
     using namespace std;
     auto cur_col = index{};
-    for (auto c : ln) {
-        if (num_col == (index)str.size())
+    for (auto c : line_range(ln)) {
+        if (num_col == cur_col - first_col)
             return;
         else if (c == '\t') {
             auto next_col = cur_col + tab_width - (cur_col % tab_width);
@@ -54,7 +54,19 @@ void display_line_fill(const line& ln, int first_col, int num_col,
         } else
             ++cur_col;
     }
-    std::fill_n(back_inserter(str), num_col - str.size(), ' ');
+    std::fill_n(back_inserter(str), num_col - (cur_col - first_col), ' ');
+}
+
+std::pair<coord, coord> display_selected_region(const buffer& buf)
+{
+    auto [starts, ends] = selected_region(buf);
+    starts.col  = expand_tabs(get_line(buf.content, starts.row), starts.col);
+    ends.col    = expand_tabs(get_line(buf.content, ends.row), ends.col);
+    starts.row -= buf.scroll.row;
+    ends.row   -= buf.scroll.row;
+    starts.col -= buf.scroll.col;
+    ends.col   -= buf.scroll.col;
+    return {starts, ends};
 }
 
 } // anonymous namespace
@@ -71,19 +83,16 @@ void draw_text(const buffer& buf, coord size)
                                              (index)buf.content.size());
     auto last_ln  = begin(buf.content) + min(size.row + buf.scroll.row,
                                              (index)buf.content.size());
-
-    auto [starts, ends] = selected_region(buf);
-    starts.row -= buf.scroll.row;
-    ends.row   -= buf.scroll.row;
+    auto [starts, ends] = display_selected_region(buf);
 
     immer::for_each(first_ln, last_ln, [&] (auto ln) {
         str.clear();
-        display_line_fill(ln, buf.scroll.col + col, size.col, str);
+        display_line_fill(ln, buf.scroll.col + col, 2*size.col, str);
         ::move(row, col);
         auto in_selection = row >= starts.row && row <= ends.row;
         if (in_selection) {
-            auto hl_first = row == starts.row ? starts.col : 0;
-            auto hl_last  = row == ends.row   ? ends.col   : size.col;
+            auto hl_first = row == starts.row ? std::max(starts.col, 0) : 0;
+            auto hl_last  = row == ends.row   ? std::max(ends.col, 0) : str.size();
             ::addnwstr(str.c_str(), hl_first);
             ::attron(COLOR_PAIR(color::selection));
             ::addnwstr(str.c_str() + hl_first, hl_last - hl_first);
@@ -101,11 +110,12 @@ void draw_mode_line(const buffer& buf, index maxcol)
     attrset(A_REVERSE);
     auto dirty_mark = is_dirty(buf) ? "**" : "--";
     auto file_name = scelta::match([](auto&& f) { return f.name; })(buf.from);
+    auto cur = buf.cursor;
+    cur.col = expand_tabs(get_line(buf.content, cur.row), cur.col);
     ::printw(" %s %s  (%d, %d)",
             dirty_mark,
             file_name.get().c_str(),
-            buf.cursor.col,
-            buf.cursor.row);
+            cur.col, cur.row);
     ::hline(' ', maxcol);
 
     scelta::match(
@@ -141,12 +151,13 @@ void draw_message(const message& msg)
 
 void draw_text_cursor(const buffer& buf, coord window_size)
 {
-    auto cursor = actual_display_cursor(buf);
-    ::move(cursor.row - buf.scroll.row, cursor.col - buf.scroll.col);
-    ::curs_set(cursor.col >= buf.scroll.col &&
-               cursor.row >= buf.scroll.row &&
-               cursor.col < buf.scroll.col + window_size.col &&
-               cursor.row < buf.scroll.row + window_size.row);
+    auto cur = buf.cursor;
+    cur.col = expand_tabs(get_line(buf.content, cur.row), cur.col);
+    ::move(cur.row - buf.scroll.row, cur.col - buf.scroll.col);
+    ::curs_set(cur.col >= buf.scroll.col &&
+               cur.row >= buf.scroll.row &&
+               cur.col < buf.scroll.col + window_size.col &&
+               cur.row < buf.scroll.row + window_size.row);
 }
 
 void draw(const application& app)
