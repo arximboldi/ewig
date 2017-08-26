@@ -383,25 +383,21 @@ buffer insert_tab(buffer buf)
 
 buffer insert_char(buffer buf, wchar_t value)
 {
-    try {
-        auto cur   = buf.cursor;
-        auto ln    = [&] {
-            auto ln = line{}.transient();
-            utf8::append(value, std::back_inserter(ln));
-            return ln.persistent();
-        } ();
-        if (cur.row == (index)buf.content.size()) {
-            buf.content = buf.content.push_back(ln);
-        } else {
-            buf.content = buf.content.update(cur.row, [&] (auto l) {
-                return l.insert(line_char(l, cur.col), ln);
-            });
-        }
-        buf.cursor.col = cur.col + 1;
-        return buf;
-    } catch (const utf8::invalid_code_point&) {
-        return buf;
+    auto cur   = buf.cursor;
+    auto ln    = [&] {
+        auto ln = line{}.transient();
+        utf8::append(value, std::back_inserter(ln));
+        return ln.persistent();
+    } ();
+    if (cur.row == (index)buf.content.size()) {
+        buf.content = buf.content.push_back(ln);
+    } else {
+        buf.content = buf.content.update(cur.row, [&] (auto l) {
+            return l.insert(line_char(l, cur.col), ln);
+        });
     }
+    buf.cursor.col = cur.col + 1;
+    return buf;
 }
 
 buffer delete_char(buffer buf)
