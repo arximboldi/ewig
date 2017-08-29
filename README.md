@@ -60,7 +60,7 @@ Keybindings
 -----------
 
 Excerpt from
-[`tui.cpp`](https://github.com/arximboldi/ewig/blob/master/src/ewig/tui.cpp):
+[`main.cpp`](https://github.com/arximboldi/ewig/blob/master/src/ewig/main.cpp):
 ```cpp
 const auto key_map_emacs = make_key_map(
 {
@@ -71,6 +71,7 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::page_down), "page-down"},
     {key::seq(key::page_up),   "page-up"},
     {key::seq(key::backspace), "delete-char"},
+    {key::seq(key::backspace_),"delete-char"},
     {key::seq(key::delete_),   "delete-char-right"},
     {key::seq(key::home),      "move-beginning-of-line"},
     {key::seq(key::ctrl('a')), "move-beginning-of-line"},
