@@ -34,26 +34,47 @@ _[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0U
 Try it out
 ----------
 
-To build the code you need a C++14, `cmake`, and `ncurses` with
-unicode support (package `libncursesw5-dev` in Debian and friends).
-Then type:
-
-#### Prepare
+If you are using the [Nix package manager](https://nixos.org/nix) (we
+strongly recommend it) you can just install the software with.
 ```
-git submodule update --recursive --init
-mkdir build
-cd build
+    nix-env -if https://github.com/arximboldi/immer/archive/master.tar.gz
 ```
 
-#### Configure and build
+Development
+-----------
+
+To build the code you need a C++17 compiler, `cmake`, and `ncurses`
+with unicode support (package `libncursesw5-dev` in Debian and
+friends).
+
+You can install those manually, but the easiest way to get a
+development environment up and running is by using
+the [Nix package manager](https://nixos.org/nix).  At the root of the
+repository just type:
 ```
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+    nix-shell
+```
+This will download all required dependencies and create an isolated
+environment in which you can use these dependencies, without polluting
+your system.
+
+Then you can proceed to download the git submodules and **generate a
+development** project using [CMake](https://cmake.org/).
+```
+    git submodule update --recursive --init
+    mkdir build && cd build
+    cmake ..
 ```
 
-#### Install
+To configure an optimized build and **compile** do:
 ```
-sudo make install
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    make
+```
+
+To **install** the compiled software globally:
+```
+    sudo make install
 ```
 
 Keybindings
