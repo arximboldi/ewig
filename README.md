@@ -26,8 +26,8 @@ _[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0U
 ---
 
 <p align="center">
-  <a href="https://asciinema.org/a/3i7smcgv5g52314lklmksqdxt">
-    <img src="https://cdn.rawgit.com/arximboldi/ewig/9ffbe95f/doc/ewig.gif">
+  <a href="https://asciinema.org/a/135452">
+    <img src="https://cdn.rawgit.com/arximboldi/ewig/d32b8a391c4a9f788175bf982bbdc5150d3f5a96/doc/ewig.gif">
   </a>
 </p>
 
