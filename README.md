@@ -38,7 +38,7 @@ Try it out
 If you are using the [Nix package manager](https://nixos.org/nix) (we
 strongly recommend it) you can just install the software with.
 ```
-    nix-env -if https://github.com/arximboldi/immer/archive/master.tar.gz
+    nix-env -if https://github.com/arximboldi/ewig/archive/master.tar.gz
 ```
 
 Development
