@@ -5,6 +5,7 @@ stdenv.mkDerivation rec {
   version = "git";
   src = builtins.filterSource (path: type:
             baseNameOf path != ".git" &&
+            baseNameOf path != "result" &&
             baseNameOf path != "build")
           ./.;
   nativeBuildInputs = [ cmake ];
