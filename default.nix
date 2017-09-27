@@ -10,7 +10,6 @@ stdenv.mkDerivation rec {
           ./.;
   nativeBuildInputs = [ cmake ];
   buildInputs = [ gcc7 ncurses boost ];
-  dontBuild = true;
   meta = with stdenv.lib; {
     homepage    = "https://github.com/arximboldi/ewig";
     description = "The eternal text editor";
