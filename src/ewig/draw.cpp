@@ -121,7 +121,8 @@ void draw_mode_line(const buffer& buf, index maxcol)
     scelta::match(
         [&] (const saving_file& file) {
             auto str        = std::string{"saving..."};
-            auto progress   = (float)file.saved_lines / file.content.size();
+            auto size       = std::max(file.content.size(), std::size_t{1});
+            auto progress   = (float)file.saved_lines / size;
             auto percentage = int(progress * 100);
             ::move(getcury(stdscr), maxcol - str.size() - 6);
             attrset(A_NORMAL | A_BOLD);
