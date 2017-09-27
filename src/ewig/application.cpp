@@ -118,6 +118,7 @@ static const auto global_commands = commands
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
+    {"noop",                   [](auto app, auto...){ return app; }},
 };
 
 result<application, action> quit(application app)
