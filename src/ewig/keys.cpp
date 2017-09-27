@@ -48,10 +48,13 @@ key_map make_key_map(std::initializer_list<std::pair<key_seq, std::string>> args
 
 std::string to_string(const key_code& k)
 {
-    return "{"
-        + std::to_string(std::get<0>(k)) + " "
-        + ::key_name(std::get<1>(k))
-        + "}";
+    if (key_seq{k} == key::ctrl('g')) // the bell causes havoc in ncurses
+        return "BELL";
+    else
+        return "{"
+            + std::to_string(std::get<0>(k)) + " "
+            + ::key_name(std::get<1>(k))
+            + "}";
 }
 
 std::string to_string(const key_seq& keys)
