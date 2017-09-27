@@ -201,28 +201,37 @@ result<application, action> update(application state, action ev)
         },
         [&](const key_action& ev) -> result_t
         {
-            state.input = state.input.push_back(ev.key);
-            const auto& map = state.keys.get();
-            auto it = map.find(state.input);
-            if (it != map.end()) {
-                if (!it->second->empty()) {
-                    auto result = update(state, command_action{it->second, {}});
-                    return {clear_input(result.first), result.second};
+            if (key_seq{ev.key} == key::ctrl('g')) {
+                // like in emacs, ctrl-g always stops the current
+                // input sequence.  ideally this should be part of the
+                // key-map?
+                return clear_input(put_message(state, "cancel"));
+            } else {
+                state.input = state.input.push_back(ev.key);
+                const auto& map = state.keys.get();
+                auto it = map.find(state.input);
+                if (it != map.end()) {
+                    if (!it->second->empty()) {
+                        auto cmd = it->second;
+                        auto result = update(state, command_action{cmd, {}});
+                        return {clear_input(result.first), result.second};
+                    }
+                } else if (key_seq{ev.key} != key::ctrl('[')) {
+                    using std::get;
+                    auto is_single_char = state.input.size() == 1;
+                    auto [kres, kkey] = ev.key;
+                    if (is_single_char && !kres && !std::iscntrl(kkey)) {
+                        auto result = update(
+                            state, command_action{"insert", (wchar_t)kkey});
+                        return {clear_input(result.first), result.second};
+                    } else {
+                        return clear_input(
+                            put_message(state, "unbound key sequence: " +
+                                        to_string(state.input)));
+                    }
                 }
-            } else if (key_seq{ev.key} != key::ctrl('[')) {
-                using std::get;
-                auto is_single_char = state.input.size() == 1;
-                auto [kres, kkey] = ev.key;
-                if (is_single_char && !kres && !std::iscntrl(kkey)) {
-                    auto result = update(
-                        state, command_action{"insert", (wchar_t)kkey});
-                    return {clear_input(result.first), result.second};
-                } else {
-                    return clear_input(put_message(state, "unbound key sequence: " +
-                                                   to_string(state.input)));
-                }
+                return state;
             }
-            return state;
         })(ev);
 }
 
