@@ -226,8 +226,7 @@ result<application, action> update(application state, action ev)
                         return {clear_input(result.first), result.second};
                     } else {
                         return clear_input(
-                            put_message(state, "unbound key sequence: " +
-                                        to_string(state.input)));
+                            put_message(state, "unbound key sequence"));
                     }
                 }
                 return state;
