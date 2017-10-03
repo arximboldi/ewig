@@ -26,7 +26,7 @@
 #include <iostream>
 
 extern "C" {
-#include <ncursesw/ncurses.h>
+#include <ncurses.h>
 }
 
 using namespace std::placeholders;

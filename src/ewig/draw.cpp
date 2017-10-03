@@ -23,7 +23,7 @@
 #include <scelta.hpp>
 
 extern "C" {
-#include <ncursesw/ncurses.h>
+#include <ncurses.h>
 }
 
 namespace ewig{

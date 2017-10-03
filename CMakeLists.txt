@@ -9,6 +9,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 find_package(Boost 1.56 REQUIRED system)
 find_package(Threads)
+find_package(Curses REQUIRED)
+
+include_directories(${CURSES_INCLUDE_DIR})
 
 add_executable(ewig
   src/ewig/application.cpp
@@ -26,7 +29,7 @@ target_include_directories(ewig PUBLIC
 target_include_directories(ewig SYSTEM PUBLIC
   ${Boost_INCLUDE_DIR})
 target_link_libraries(ewig
-  -lncursesw
+  ${CURSES_LIBRARIES}
   ${Boost_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT})
 
