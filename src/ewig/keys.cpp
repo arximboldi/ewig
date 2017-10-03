@@ -22,7 +22,7 @@
 #include <cassert>
 
 extern "C" {
-#include <ncursesw/ncurses.h>
+#include <ncurses.h>
 }
 
 using namespace std::string_literals;
