@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 find_package(Boost 1.56 REQUIRED system)
 find_package(Threads)
+
+set(CMAKE_CURSES_NEED_WIDE TRUE)
 find_package(Curses REQUIRED)
 
 include_directories(${CURSES_INCLUDE_DIR})
