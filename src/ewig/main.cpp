@@ -28,9 +28,13 @@ namespace {
 
 const auto key_map_emacs = make_key_map(
 {
+    {key::seq(key::ctrl('p')), "move-up"},
     {key::seq(key::up),        "move-up"},
     {key::seq(key::down),      "move-down"},
+    {key::seq(key::ctrl('n')), "move-down"},
+    {key::seq(key::ctrl('b')), "move-left"},
     {key::seq(key::left),      "move-left"},
+    {key::seq(key::ctrl('f')), "move-right"},
     {key::seq(key::right),     "move-right"},
     {key::seq(key::page_down), "page-down"},
     {key::seq(key::page_up),   "page-up"},
