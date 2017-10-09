@@ -61,7 +61,7 @@ template <typename Arg=void, typename Fn>
 command edit_command(Fn fn)
 {
     return [=] (application state, std::any x) {
-        return apply_edit(state, arg<Arg>::invoke(fn, x, state.current));
+        return apply_edit(state, arg<Arg>::invoke(fn, x, state.current()));
     };
 }
 
@@ -70,7 +70,7 @@ command paste_command(Fn fn)
 {
     return [=] (application state, std::any x) {
         return apply_edit(state, arg<Arg>::invoke(fn, x,
-                                                 state.current,
+                                                  state.current(),
                                                  state.clipboard.back()));
     };
 }
@@ -79,9 +79,9 @@ template <typename Arg=arg<void>, typename Fn>
 command scroll_command(Fn fn)
 {
     return [=] (application state, std::any arg) {
-        state.current = Arg::invoke(fn, arg,
-                                   state.current,
-                                   editor_size(state));
+        state.buffers[state.current_buffer] = Arg::invoke(fn, arg,
+                                                          state.current(),
+                                                          editor_size(state));
         return state;
     };
 }
@@ -113,6 +113,8 @@ static const auto global_commands = commands
     {"paste",                  paste_command(insert_text)},
     {"quit",                   app_command(quit)},
     {"save",                   app_command(save)},
+    {"next-buffer",            app_command(next_buffer)},
+    {"previous-buffer",        app_command(previous_buffer)},
     {"load",                   app_command<std::string>(load)},
     {"message",                app_command<std::string>(put_message)},
     {"undo",                   edit_command(undo)},
@@ -129,26 +131,43 @@ result<application, action> quit(application app)
     };
 }
 
+result<application, action> next_buffer(application state)
+{
+    state.current_buffer = (state.current_buffer + 1) % state.buffers.size();
+    return state;
+}
+
+result<application, action> previous_buffer(application state)
+{
+    if(!state.current_buffer)
+        state.current_buffer = state.buffers.size() - 1;
+    else
+        state.current_buffer = (state.current_buffer - 1);
+    return state;
+}
+
 result<application, action> save(application state)
 {
-    if (!is_dirty(state.current)) {
+    if (!is_dirty(state.current())) {
         return put_message(state, "nothing to save");
-    } else if (io_in_progress(state.current)) {
+    } else if (io_in_progress(state.current())) {
         return put_message(state, "can't save while saving or loading the file");
     } else {
-        auto [buffer, effect] = save_buffer(state.current);
-        state.current = buffer;
+        auto [buffer, effect] = save_buffer(state.current());
+        state.buffers[state.current_buffer] = buffer;
         return {state, effect};
     }
 }
 
 result<application, action> load(application state, const std::string& fname)
 {
-    if (io_in_progress(state.current)) {
+    if (io_in_progress(state.current())) {
         return put_message(state, "can't load while saving or loading the file");
     } else {
-        auto [buffer, effect] = load_buffer(state.current, fname);
-        state.current = buffer;
+        buffer newBuffer;
+        newBuffer.id = state.buffers.size();
+        auto [buf, effect] = load_buffer(newBuffer.id, newBuffer,  fname);
+        state.buffers.push_back(buf);
         return {state, effect};
     }
 }
@@ -190,8 +209,15 @@ result<application, action> update(application state, action ev)
         },
         [&](const buffer_action& ev) -> result_t
         {
-            auto [buffer, msg] = update_buffer(state.current, ev);
-            state.current = buffer;
+            size_t buffer_id = state.current_buffer;
+            if(auto index = std::get_if<load_done_action>(&ev)) {
+                buffer_id = index->buffer_id;
+            }
+            if(auto index = std::get_if<load_done_action>(&ev)) {
+                buffer_id = index->buffer_id;
+            }
+            auto [buffer, msg] = update_buffer(state.buffers[buffer_id], ev);
+            state.buffers[buffer.id] = buffer;
             return put_message(state, msg);
         },
         [&](const resize_action& ev) -> result_t
@@ -237,16 +263,16 @@ result<application, action> update(application state, action ev)
 application apply_edit(application state, buffer edit)
 {
     auto msg = std::string{};
-    std::tie(state.current, msg) =
-        record(state.current, scroll_to_cursor(edit, editor_size(state)));
+    std::tie(state.buffers[state.current_buffer], msg) =
+        record(state.current(), scroll_to_cursor(edit, editor_size(state)));
     return put_message(state, msg);
 }
 
 application apply_edit(application state, std::pair<buffer, text> edit)
 {
     auto msg = std::string{};
-    std::tie(state.current, msg) =
-        record(state.current, scroll_to_cursor(edit.first, editor_size(state)));
+    std::tie(state.buffers[state.current_buffer], msg) =
+        record(state.current(), scroll_to_cursor(edit.first, editor_size(state)));
     return put_message(put_clipboard(state, edit.second), msg);
 }
 

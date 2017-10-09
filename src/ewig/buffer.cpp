@@ -93,7 +93,7 @@ std::streamoff stream_size(std::istream& file)
     return endp - begp;
 }
 
-auto load_file_effect(immer::box<std::string> file_name)
+auto load_file_effect(size_t buffer_id, immer::box<std::string> file_name)
 {
     constexpr auto progress_report_rate_bytes = 1 << 20;
 
@@ -124,13 +124,13 @@ auto load_file_effect(immer::box<std::string> file_name)
                     if (progress.loaded_bytes - lastp >
                         progress_report_rate_bytes) {
                         progress.content = content.persistent();
-                        ctx.dispatch(load_progress_action{progress});
+                        ctx.dispatch(load_progress_action{buffer_id, progress});
                         lastp = progress.loaded_bytes;
                     }
                 }
-                ctx.dispatch(load_done_action{{file_name, content.persistent()}});
+                ctx.dispatch(load_done_action{buffer_id, {file_name, content.persistent()}});
             } catch (...) {
-                ctx.dispatch(load_error_action{{file_name, content.persistent()},
+                ctx.dispatch(load_error_action{buffer_id, {file_name, content.persistent()},
                                                std::current_exception()});
             }
         });
@@ -182,10 +182,10 @@ result<buffer, buffer_action> save_buffer(buffer buf)
     return { buf, save_file_effect(file.name, file.content, buf.content) };
 }
 
-result<buffer, buffer_action> load_buffer(buffer buf, const std::string& fname)
+result<buffer, buffer_action> load_buffer(size_t buffer_id, buffer buf, const std::string& fname)
 {
     buf.from = loading_file{fname, {}, {}, 1};
-    return { buf, load_file_effect(fname) };
+    return { buf, load_file_effect(buffer_id, fname) };
 }
 
 bool is_dirty(const buffer& buf)

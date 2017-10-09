@@ -55,7 +55,11 @@ struct application
     coord window_size;
     key_map keys;
     key_seq input;
-    buffer current;
+    buffer current() const {
+        return buffers[current_buffer];
+    }
+    size_t current_buffer;
+    std::vector<buffer> buffers;
     immer::vector<text> clipboard;
     immer::vector<message> messages;
 };
@@ -72,6 +76,8 @@ application clear_input(application state);
 
 result<application, action> quit(application app);
 result<application, action> save(application app);
+result<application, action> next_buffer(application app);
+result<application, action> previous_buffer(application app);
 result<application, action> load(application app, const std::string& fname);
 result<application, action> update(application state, action ev);
 
