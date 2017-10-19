@@ -1,4 +1,10 @@
-with import <nixpkgs> {};
+{ nixpkgs ? <nixpkgs> }:
+
+with import nixpkgs {};
+
+let
+  deps = import ./nix/deps.nix { inherit nixpkgs; };
+in
 
 stdenv.mkDerivation rec {
   name = "ewig-git";
@@ -9,7 +15,14 @@ stdenv.mkDerivation rec {
             baseNameOf path != "build")
           ./.;
   nativeBuildInputs = [ cmake ];
-  buildInputs = [ gcc7 ncurses boost ];
+  buildInputs = [
+    gcc7
+    ncurses
+    boost
+    deps.immer
+    deps.scelta
+    deps.utfcpp
+  ];
   meta = with stdenv.lib; {
     homepage    = "https://github.com/arximboldi/ewig";
     description = "The eternal text editor";
