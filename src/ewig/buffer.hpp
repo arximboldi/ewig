@@ -78,6 +78,7 @@ struct snapshot
 
 struct buffer
 {
+    size_t id;
     file from;
     text content;
     coord cursor;
@@ -87,9 +88,9 @@ struct buffer
     std::optional<std::size_t> history_pos;
 };
 
-struct load_progress_action { loading_file file; };
-struct load_done_action { existing_file file; };
-struct load_error_action { existing_file file; std::exception_ptr err; };
+struct load_progress_action { size_t buffer_id; loading_file file; };
+struct load_done_action { size_t buffer_id; existing_file file; };
+struct load_error_action { size_t buffer_id; existing_file file; std::exception_ptr err; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
 struct save_error_action { existing_file file; std::exception_ptr err; };
@@ -133,7 +134,7 @@ bool is_dirty(const buffer& buf);
 
 std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action ac);
 
-result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
+result<buffer, buffer_action> load_buffer(size_t buffer_id, buffer, const std::string& fname);
 result<buffer, buffer_action> save_buffer(buffer buf);
 
 index expand_tabs(const line& ln, index col);

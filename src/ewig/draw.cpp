@@ -167,17 +167,17 @@ void draw(const application& app)
 
     auto size = editor_size(app);
     ::move(0, 0);
-    draw_text(app.current, size);
+    draw_text(app.current(), size);
 
     ::move(size.row, 0);
-    draw_mode_line(app.current, size.col);
+    draw_mode_line(app.current(), size.col);
 
     if (!app.messages.empty()) {
         ::move(size.row + 1, 0);
         draw_message(app.messages.back());
     }
 
-    draw_text_cursor(app.current, size);
+    draw_text_cursor(app.current(), size);
     ::refresh();
 }
 

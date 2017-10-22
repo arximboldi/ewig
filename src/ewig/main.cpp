@@ -58,17 +58,23 @@ const auto key_map_emacs = make_key_map(
     {key::seq(key::ctrl('x'), '['), "move-beginning-buffer"},
     {key::seq(key::ctrl('x'), ']'), "move-end-buffer"},
     {key::seq(key::alt('w')),  "copy"},
+    {key::seq(key::ctrl('x'), key::right), "next-buffer"},
+    {key::seq(key::ctrl('x'), key::left), "previous-buffer"},
 });
 
-void run(const std::string& fname)
+void run(const std::vector<std::string>& fnames)
 {
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
     auto quit = [&] { term.stop(); };
     auto init = application{term.size(), key_map_emacs};
-    auto st   = store<application, action>{serv, init, update, draw, quit};
+    buffer scratch;
+    scratch.id = 0;
+    init.buffers.push_back(scratch);
+    auto st = store<application, action>{serv, init, update, draw, quit};
     term.start([&] (auto ev) { st.dispatch (ev); });
-    st.dispatch(command_action{"load", fname});
+    for(auto& fname : fnames)
+        st.dispatch(command_action{"load", fname});
     serv.run();
 }
 
@@ -80,11 +86,11 @@ int main(int argc, char* argv[])
     std::locale::global(std::locale(""));
     ::setlocale(LC_ALL, "");
 
-    if (argc != 2) {
+    if (argc != 3) {
         std::cerr << "give me a file name" << std::endl;
         return 1;
     }
 
-    ewig::run(argv[1]);
+    ewig::run({argv + 1, argv + argc});
     return 0;
 }
