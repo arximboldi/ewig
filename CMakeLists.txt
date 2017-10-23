@@ -16,8 +16,6 @@ find_package(Immer)
 find_path(SCELTA_INCLUDE_DIR scelta.hpp)
 find_path(UTFCPP_INCLUDE_DIR utf8.h)
 
-include_directories(${CURSES_INCLUDE_DIR})
-
 add_executable(ewig
   src/ewig/application.cpp
   src/ewig/buffer.cpp
@@ -29,6 +27,7 @@ target_include_directories(ewig PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:include>)
 target_include_directories(ewig SYSTEM PUBLIC
+  ${CURSES_INCLUDE_DIR}
   ${Boost_INCLUDE_DIR}
   ${SCELTA_INCLUDE_DIR}
   ${UTFCPP_INCLUDE_DIR})
