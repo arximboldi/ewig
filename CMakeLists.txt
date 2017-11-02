@@ -13,6 +13,7 @@ find_package(Curses REQUIRED)
 find_package(Boost 1.56 REQUIRED system)
 find_package(Threads)
 find_package(Immer)
+find_package(Lager)
 find_path(SCELTA_INCLUDE_DIR scelta.hpp)
 find_path(UTFCPP_INCLUDE_DIR utf8.h)
 
@@ -33,6 +34,7 @@ target_include_directories(ewig SYSTEM PUBLIC
   ${UTFCPP_INCLUDE_DIR})
 target_link_libraries(ewig
   immer
+  lager
   ${CURSES_LIBRARIES}
   ${Boost_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT})

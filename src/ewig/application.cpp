@@ -50,7 +50,7 @@ struct arg<void>
 };
 
 template <typename Arg=void, typename Fn>
-command app_command(Fn fn)
+command app_command_with_effect(Fn fn)
 {
     return [=] (application state, std::any x) {
         return arg<Arg>::invoke(fn, x, state);
@@ -58,10 +58,19 @@ command app_command(Fn fn)
 }
 
 template <typename Arg=void, typename Fn>
+command app_command(Fn fn)
+{
+    return [=] (application state, std::any x) {
+        return std::pair{arg<Arg>::invoke(fn, x, state), lager::noop};
+    };
+}
+
+template <typename Arg=void, typename Fn>
 command edit_command(Fn fn)
 {
     return [=] (application state, std::any x) {
-        return apply_edit(state, arg<Arg>::invoke(fn, x, state.current));
+        return std::pair{apply_edit(state, arg<Arg>::invoke(fn, x, state.current)),
+                lager::noop};
     };
 }
 
@@ -69,9 +78,11 @@ template <typename Arg=void, typename Fn>
 command paste_command(Fn fn)
 {
     return [=] (application state, std::any x) {
-        return apply_edit(state, arg<Arg>::invoke(fn, x,
-                                                 state.current,
-                                                 state.clipboard.back()));
+        return std::pair{
+            apply_edit(state, arg<Arg>::invoke(fn, x,
+                                              state.current,
+                                              state.clipboard.back())),
+                lager::noop};
     };
 }
 
@@ -82,7 +93,7 @@ command scroll_command(Fn fn)
         state.current = Arg::invoke(fn, arg,
                                    state.current,
                                    editor_size(state));
-        return state;
+        return std::pair{state, lager::noop};
     };
 }
 
@@ -111,17 +122,17 @@ static const auto global_commands = commands
     {"page-down",              scroll_command(page_down)},
     {"page-up",                scroll_command(page_up)},
     {"paste",                  paste_command(insert_text)},
-    {"quit",                   app_command(quit)},
-    {"save",                   app_command(save)},
-    {"load",                   app_command<std::string>(load)},
+    {"quit",                   app_command_with_effect(quit)},
+    {"save",                   app_command_with_effect(save)},
+    {"load",                   app_command_with_effect<std::string>(load)},
     {"message",                app_command<std::string>(put_message)},
     {"undo",                   edit_command(undo)},
     {"start-selection",        edit_command(start_selection)},
     {"select-whole-buffer",    edit_command(select_whole_buffer)},
-    {"noop",                   [](auto app, auto...){ return app; }},
+    {"noop",                   [](auto app, auto...){ return std::pair{app, lager::noop}; }},
 };
 
-result<application, action> quit(application app)
+std::pair<application, lager::effect<action>> quit(application app)
 {
     return {
         put_message(app, "quitting... (waiting for operations to finish)"),
@@ -129,12 +140,13 @@ result<application, action> quit(application app)
     };
 }
 
-result<application, action> save(application state)
+std::pair<application, lager::effect<action>> save(application state)
 {
     if (!is_dirty(state.current)) {
-        return put_message(state, "nothing to save");
+        return {put_message(state, "nothing to save"), lager::noop};
     } else if (io_in_progress(state.current)) {
-        return put_message(state, "can't save while saving or loading the file");
+        return {put_message(state, "can't save while saving or loading the file"),
+                lager::noop};
     } else {
         auto [buffer, effect] = save_buffer(state.current);
         state.current = buffer;
@@ -142,10 +154,11 @@ result<application, action> save(application state)
     }
 }
 
-result<application, action> load(application state, const std::string& fname)
+std::pair<application, lager::effect<action>> load(application state, const std::string& fname)
 {
     if (io_in_progress(state.current)) {
-        return put_message(state, "can't load while saving or loading the file");
+        return {put_message(state, "can't load while saving or loading the file"),
+                lager::noop};
     } else {
         auto [buffer, effect] = load_buffer(state.current, fname);
         state.current = buffer;
@@ -173,9 +186,9 @@ application clear_input(application state)
     return state;
 }
 
-result<application, action> update(application state, action ev)
+std::pair<application, lager::effect<action>> update(application state, action ev)
 {
-    using result_t = result<application, action>;
+    using result_t = std::pair<application, lager::effect<action>>;
 
     return scelta::match(
         [&](const command_action& ev) -> result_t
@@ -185,19 +198,20 @@ result<application, action> update(application state, action ev)
                 state = put_message(state, "calling command: "s + *ev.name);
                 return it->second(state, ev.arg);
             } else {
-                return put_message(state, "unknown command: "s + *ev.name);
+                return {put_message(state, "unknown command: "s + *ev.name),
+                        lager::noop};
             }
         },
         [&](const buffer_action& ev) -> result_t
         {
             auto [buffer, msg] = update_buffer(state.current, ev);
             state.current = buffer;
-            return put_message(state, msg);
+            return {put_message(state, msg), lager::noop};
         },
         [&](const resize_action& ev) -> result_t
         {
             state.window_size = ev.size;
-            return state;
+            return {state, lager::noop};
         },
         [&](const key_action& ev) -> result_t
         {
@@ -205,7 +219,7 @@ result<application, action> update(application state, action ev)
                 // like in emacs, ctrl-g always stops the current
                 // input sequence.  ideally this should be part of the
                 // key-map?
-                return clear_input(put_message(state, "cancel"));
+                return {clear_input(put_message(state, "cancel")), lager::noop};
             } else {
                 state.input = state.input.push_back(ev.key);
                 const auto& map = state.keys.get();
@@ -225,11 +239,11 @@ result<application, action> update(application state, action ev)
                             state, command_action{"insert", (wchar_t)kkey});
                         return {clear_input(result.first), result.second};
                     } else {
-                        return clear_input(
-                            put_message(state, "unbound key sequence"));
+                        return {clear_input(put_message(state, "unbound key sequence")),
+                                lager::noop};
                     }
                 }
-                return state;
+                return {state, lager::noop};
             }
         })(ev);
 }

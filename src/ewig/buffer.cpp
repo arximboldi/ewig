@@ -175,14 +175,14 @@ auto save_file_effect(immer::box<std::string> file_name,
 
 } // anonymous
 
-result<buffer, buffer_action> save_buffer(buffer buf)
+std::pair<buffer, lager::effect<buffer_action>> save_buffer(buffer buf)
 {
     auto file = std::get<existing_file>(buf.from);
     buf.from = saving_file{file.name, buf.content, {}};
     return { buf, save_file_effect(file.name, file.content, buf.content) };
 }
 
-result<buffer, buffer_action> load_buffer(buffer buf, const std::string& fname)
+std::pair<buffer, lager::effect<buffer_action>> load_buffer(buffer buf, const std::string& fname)
 {
     buf.from = loading_file{fname, {}, {}, 1};
     return { buf, load_file_effect(fname) };

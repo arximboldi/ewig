@@ -22,7 +22,8 @@
 
 #include <ewig/keys.hpp>
 #include <ewig/buffer.hpp>
-#include <ewig/store.hpp>
+
+#include <lager/store.hpp>
 
 #include <ctime>
 #include <variant>
@@ -60,8 +61,9 @@ struct application
     immer::vector<message> messages;
 };
 
-using command =
-    std::function<result<application, action>(application, std::any)>;
+using command = std::function<
+    std::pair<application, lager::effect<action>>(
+        application, std::any)>;
 
 coord editor_size(application app);
 
@@ -70,10 +72,10 @@ application put_message(application state, immer::box<std::string> str);
 application put_clipboard(application state, text content);
 application clear_input(application state);
 
-result<application, action> quit(application app);
-result<application, action> save(application app);
-result<application, action> load(application app, const std::string& fname);
-result<application, action> update(application state, action ev);
+std::pair<application, lager::effect<action>> quit(application app);
+std::pair<application, lager::effect<action>> save(application app);
+std::pair<application, lager::effect<action>> load(application app, const std::string& fname);
+std::pair<application, lager::effect<action>> update(application state, action ev);
 
 application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);

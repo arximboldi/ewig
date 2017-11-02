@@ -21,6 +21,9 @@
 #include "ewig/terminal.hpp"
 #include "ewig/draw.hpp"
 
+#include <lager/store.hpp>
+#include <lager/event_loop/boost_asio.hpp>
+
 #include <iostream>
 
 namespace ewig {
@@ -64,9 +67,11 @@ void run(const std::string& fname)
 {
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
-    auto quit = [&] { term.stop(); };
-    auto init = application{term.size(), key_map_emacs};
-    auto st   = store<application, action>{serv, init, update, draw, quit};
+    auto st   = lager::make_store<action>(
+        application{term.size(), key_map_emacs},
+        update,
+        draw,
+        lager::boost_asio_event_loop{serv, [&] { term.stop(); }});
     term.start([&] (auto ev) { st.dispatch (ev); });
     st.dispatch(command_action{"load", fname});
     serv.run();

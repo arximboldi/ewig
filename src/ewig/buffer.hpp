@@ -21,8 +21,8 @@
 #pragma once
 
 #include <ewig/coord.hpp>
-#include <ewig/store.hpp>
 
+#include <lager/store.hpp>
 #include <immer/box.hpp>
 #include <immer/flex_vector.hpp>
 #include <immer/vector.hpp>
@@ -133,8 +133,8 @@ bool is_dirty(const buffer& buf);
 
 std::pair<buffer, std::string> update_buffer(buffer buf, buffer_action ac);
 
-result<buffer, buffer_action> load_buffer(buffer, const std::string& fname);
-result<buffer, buffer_action> save_buffer(buffer buf);
+std::pair<buffer, lager::effect<buffer_action>> load_buffer(buffer, const std::string& fname);
+std::pair<buffer, lager::effect<buffer_action>> save_buffer(buffer buf);
 
 index expand_tabs(const line& ln, index col);
 
