@@ -1,5 +1,4 @@
-{ compiler ? "gcc7",
-  nixpkgs ? (import <nixpkgs> {}).fetchFromGitHub {
+{ nixpkgs ? (import <nixpkgs> {}).fetchFromGitHub {
     owner  = "NixOS";
     repo   = "nixpkgs";
     rev    = "d0d905668c010b65795b57afdf7f0360aac6245b";
@@ -17,13 +16,13 @@ in
 stdenv.mkDerivation rec {
   name = "ewig-env";
   buildInputs = [
+    gcc7
     cmake
     ncurses
     boost
     deps.immer
     deps.scelta
     deps.utfcpp
-  ] ++ stdenv.lib.optionals compiler_pkg.isClang [libcxx libcxxabi];
-  propagatedBuildInputs = stdenv.lib.optional (!native_compiler) compiler_pkg;
-  nativeBuildInputs = stdenv.lib.optional native_compiler compiler_pkg;
+    deps.lager
+  ];
 }

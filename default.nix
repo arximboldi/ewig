@@ -22,6 +22,7 @@ stdenv.mkDerivation rec {
     deps.immer
     deps.scelta
     deps.utfcpp
+    deps.lager
   ];
   meta = with stdenv.lib; {
     homepage    = "https://github.com/arximboldi/ewig";
