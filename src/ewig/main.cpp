@@ -24,14 +24,16 @@
 #include <lager/store.hpp>
 #include <lager/event_loop/boost_asio.hpp>
 
+#include <iostream>
+
+
+#if EWIG_ENABLE_DEBUGGER
 #include <lager/debug/enable.hpp>
 #include <lager/debug/http_server.hpp>
 #include <lager/debug/cereal/immer_vector.hpp>
 #include <lager/debug/cereal/immer_box.hpp>
 #include <lager/debug/cereal/tuple.hpp>
 #include <cereal/types/unordered_map.hpp>
-
-#include <iostream>
 
 namespace cereal {
 
@@ -65,6 +67,8 @@ void load(Archive& ar, ewig::text& txt)
 };
 
 } // namespace cereal
+
+#endif // EWIG_ENABLE_DEBUGGER
 
 namespace ewig {
 namespace {
@@ -105,7 +109,12 @@ const auto key_map_emacs = make_key_map(
 
 void run(int argc, const char** argv, const std::string& fname)
 {
+#if EWIG_ENABLE_DEBUGGER
     auto debugger = lager::http_debug_server{argc, argv, 8080};
+    auto enhancer = lager::enable_debug(debugger);
+#else
+    auto enhancer = lager::identity;
+#endif
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
     auto st   = lager::make_store<action>(
@@ -113,7 +122,7 @@ void run(int argc, const char** argv, const std::string& fname)
         update,
         draw,
         lager::boost_asio_event_loop{serv, [&] { term.stop(); }},
-        lager::enable_debug(debugger));
+        enhancer);
     term.start([&] (auto ev) { st.dispatch (ev); });
     st.dispatch(command_action{"load", fname});
     serv.run();

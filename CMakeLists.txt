@@ -20,28 +20,39 @@ find_package(LibHttpServer)
 find_path(SCELTA_INCLUDE_DIR scelta.hpp)
 find_path(UTFCPP_INCLUDE_DIR utf8.h)
 
-add_executable(ewig
+set(ewig_sources
   src/ewig/application.cpp
   src/ewig/buffer.cpp
   src/ewig/draw.cpp
   src/ewig/keys.cpp
   src/ewig/terminal.cpp
   src/ewig/main.cpp)
-target_include_directories(ewig PUBLIC
+set(ewig_include_directories
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:include>)
-target_include_directories(ewig SYSTEM PUBLIC
+set(ewig_system_include_directories
   ${CURSES_INCLUDE_DIR}
   ${Boost_INCLUDE_DIR}
   ${SCELTA_INCLUDE_DIR}
-  ${UTFCPP_INCLUDE_DIR}
-  ${LIBHTTPSERVER_INCLUDE_DIRS})
-target_link_libraries(ewig
+  ${UTFCPP_INCLUDE_DIR})
+set(ewig_link_libraries
   immer
   lager
   ${CURSES_LIBRARIES}
   ${Boost_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
+  ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(ewig ${ewig_sources})
+target_include_directories(ewig PUBLIC ${ewig_include_directories})
+target_include_directories(ewig SYSTEM PUBLIC ${ewig_system_include_directories})
+target_link_libraries(ewig ${ewig_link_libraries})
+
+add_executable(ewig-debug ${ewig_sources})
+target_compile_definitions(ewig-debug PUBLIC -DEWIG_ENABLE_DEBUGGER=1)
+target_include_directories(ewig-debug PUBLIC ${ewig_include_directories})
+target_include_directories(ewig-debug SYSTEM PUBLIC ${ewig_system_include_directories}
+  ${LIBHTTPSERVER_INCLUDE_DIRS})
+target_link_libraries(ewig-debug ${ewig_link_libraries}
   ${LIBHTTPSERVER_LIBRARIES})
 
 install(TARGETS ewig DESTINATION bin)
