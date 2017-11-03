@@ -25,4 +25,8 @@ stdenv.mkDerivation rec {
     deps.utfcpp
     deps.lager
   ];
+  shellHook = ''
+    export EWIG_ROOT=`dirname ${toString ./shell.nix}`
+    export PATH=$PATH:"$EWIG_ROOT/build"
+  '';
 }
