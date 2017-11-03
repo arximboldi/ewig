@@ -23,9 +23,13 @@
 #include <ewig/coord.hpp>
 
 #include <lager/store.hpp>
+#include <lager/debug/cereal/struct.hpp>
+
 #include <immer/box.hpp>
 #include <immer/flex_vector.hpp>
+#include <immer/flex_vector_transient.hpp>
 #include <immer/vector.hpp>
+#include <immer/algorithm.hpp>
 
 #include <utf8.h>
 #include <boost/range/iterator_range.hpp>
@@ -43,12 +47,14 @@ struct no_file
     static immer::box<std::string> name;
     static text content;
 };
+LAGER_CEREAL_STRUCT(no_file, (name)(content));
 
 struct existing_file
 {
     immer::box<std::string> name;
     text content;
 };
+LAGER_CEREAL_STRUCT(existing_file, (name)(content));
 
 struct saving_file
 {
@@ -56,6 +62,7 @@ struct saving_file
     text content;
     std::size_t saved_lines;
 };
+LAGER_CEREAL_STRUCT(saving_file, (name)(content));
 
 struct loading_file
 {
@@ -64,6 +71,7 @@ struct loading_file
     std::streamoff loaded_bytes;
     std::streamoff total_bytes;
 };
+LAGER_CEREAL_STRUCT(loading_file, (name)(content)(loaded_bytes)(total_bytes));
 
 using file = std::variant<no_file,
                           existing_file,
@@ -75,6 +83,7 @@ struct snapshot
     text content;
     coord cursor;
 };
+LAGER_CEREAL_STRUCT(snapshot, (content)(cursor));
 
 struct buffer
 {
@@ -86,6 +95,9 @@ struct buffer
     immer::vector<snapshot> history;
     std::optional<std::size_t> history_pos;
 };
+LAGER_CEREAL_STRUCT(
+    buffer,
+    (from)(content)(cursor)(scroll)(selection_start)(history)(history_pos));
 
 struct load_progress_action { loading_file file; };
 struct load_done_action { existing_file file; };
@@ -93,6 +105,12 @@ struct load_error_action { existing_file file; std::exception_ptr err; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
 struct save_error_action { existing_file file; std::exception_ptr err; };
+LAGER_CEREAL_STRUCT(load_progress_action, (file));
+LAGER_CEREAL_STRUCT(load_done_action, (file));
+LAGER_CEREAL_STRUCT(load_error_action, (file));
+LAGER_CEREAL_STRUCT(save_progress_action, (file));
+LAGER_CEREAL_STRUCT(save_done_action, (file));
+LAGER_CEREAL_STRUCT(save_error_action, (file));
 
 using buffer_action = std::variant<load_progress_action,
                                    load_done_action,

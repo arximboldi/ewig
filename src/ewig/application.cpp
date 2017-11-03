@@ -31,20 +31,21 @@ namespace {
 template <typename T>
 struct arg
 {
-    template <typename Fn, typename... Args>
-    static auto invoke(Fn&& fn, const std::any& arg, Args&&... args)
+    template <typename Fn, typename Arg, typename... Args>
+    static auto invoke(Fn&& fn, const Arg& arg, Args&&... args)
     {
         return std::forward<Fn>(fn)(std::forward<Args>(args)...,
-                                   std::any_cast<T>(arg));
+                                   std::get<T>(arg));
     }
 };
 
 template <>
 struct arg<void>
 {
-    template <typename Fn, typename... Args>
-    static auto invoke(Fn&& fn, const std::any&, Args&&... args)
+    template <typename Fn, typename Arg, typename... Args>
+    static auto invoke(Fn&& fn, const Arg& arg, Args&&... args)
     {
+        assert(std::holds_alternative<std::monostate>(arg));
         return std::forward<Fn>(fn)(std::forward<Args>(args)...);
     }
 };
@@ -52,7 +53,7 @@ struct arg<void>
 template <typename Arg=void, typename Fn>
 command app_command_with_effect(Fn fn)
 {
-    return [=] (application state, std::any x) {
+    return [=] (application state, arg_t x) {
         return arg<Arg>::invoke(fn, x, state);
     };
 }
@@ -60,7 +61,7 @@ command app_command_with_effect(Fn fn)
 template <typename Arg=void, typename Fn>
 command app_command(Fn fn)
 {
-    return [=] (application state, std::any x) {
+    return [=] (application state, arg_t x) {
         return std::pair{arg<Arg>::invoke(fn, x, state), lager::noop};
     };
 }
@@ -68,7 +69,7 @@ command app_command(Fn fn)
 template <typename Arg=void, typename Fn>
 command edit_command(Fn fn)
 {
-    return [=] (application state, std::any x) {
+    return [=] (application state, arg_t x) {
         return std::pair{apply_edit(state, arg<Arg>::invoke(fn, x, state.current)),
                 lager::noop};
     };
@@ -77,7 +78,7 @@ command edit_command(Fn fn)
 template <typename Arg=void, typename Fn>
 command paste_command(Fn fn)
 {
-    return [=] (application state, std::any x) {
+    return [=] (application state, arg_t x) {
         return std::pair{
             apply_edit(state, arg<Arg>::invoke(fn, x,
                                               state.current,
@@ -89,7 +90,7 @@ command paste_command(Fn fn)
 template <typename Arg=arg<void>, typename Fn>
 command scroll_command(Fn fn)
 {
-    return [=] (application state, std::any arg) {
+    return [=] (application state, arg_t arg) {
         state.current = Arg::invoke(fn, arg,
                                    state.current,
                                    editor_size(state));

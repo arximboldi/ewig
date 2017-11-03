@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <lager/debug/cereal/struct.hpp>
+
 namespace ewig {
 
 using index = int;
@@ -29,6 +31,7 @@ struct coord
     index row = {};
     index col = {};
 };
+LAGER_CEREAL_STRUCT(coord, (row)(col));
 
 inline bool operator<(const coord& a, const coord& b)
 {
