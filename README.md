@@ -12,8 +12,8 @@ using [immutable data-structures](https://sinusoid.es/immer/) in C++.
 The code is written in a simple style to showcase a value-based
 functional architecture.  We invite you to
 [study the code](https://github.com/arximboldi/ewig/tree/master/src/ewig).
-Learn more in the **C++Now'17 Talk**:
-_[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=ZsryQp0UAC8)_.
+Learn more in the **CppCon'17 Talk**:
+_[Postmodern Immutable Data Structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)_.
 
 > <a href="https://www.patreon.com/sinusoidal">
 >     <img align="right" src="https://cdn.rawgit.com/arximboldi/immer/master/doc/_static/patreon.svg">
