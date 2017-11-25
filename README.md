@@ -59,10 +59,8 @@ This will download all required dependencies and create an isolated
 environment in which you can use these dependencies, without polluting
 your system.
 
-Then you can proceed to download the git submodules and **generate a
-development** project using [CMake](https://cmake.org/).
+Then you can **generate a development** project using [CMake](https://cmake.org/).
 ```
-    git submodule update --recursive --init
     mkdir build && cd build
     cmake ..
 ```
