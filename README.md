@@ -59,8 +59,7 @@ This will download all required dependencies and create an isolated
 environment in which you can use these dependencies, without polluting
 your system.
 
-Then you can **generate a
-development** project using [CMake](https://cmake.org/).
+Then you can **generate a development** project using [CMake](https://cmake.org/).
 ```
     mkdir build && cd build
     cmake ..
