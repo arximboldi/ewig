@@ -80,10 +80,12 @@ command paste_command(Fn fn)
 {
     return [=] (application state, arg_t x) {
         return std::pair{
-            apply_edit(state, arg<Arg>::invoke(fn, x,
-                                              state.current,
-                                              state.clipboard.back())),
-                lager::noop};
+            !state.clipboard.empty()
+                ? apply_edit(state, arg<Arg>::invoke(fn, x,
+                                                    state.current,
+                                                    state.clipboard.back()))
+                : state,
+            lager::noop};
     };
 }
 
