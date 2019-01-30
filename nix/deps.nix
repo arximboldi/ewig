@@ -70,7 +70,12 @@ rec {
     propagatedBuildInputs = [ libmicrohttpd ];
     nativeBuildInputs = [ autoreconfHook gcc5 ];
     configureScript = "../configure";
-    preConfigure = "mkdir build && cd build";
+    preConfigure = ''
+      substituteInPlace ./configure \
+        --replace "/usr/bin/file" "${file}/bin/file" \
+        --replace "/bin/pwd" "${coreutils}/bin/pwd"
+      mkdir build && cd build
+    '';
     meta = with stdenv.lib; {
       homepage = "https://github.com/etr/libhttpserver";
       description = "C++ library for creating an embedded Rest HTTP server (and more)";
