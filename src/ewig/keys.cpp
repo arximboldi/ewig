@@ -22,6 +22,7 @@
 #include <cassert>
 
 extern "C" {
+#define _XOPEN_SOURCE_EXTENDED
 #include <ncurses.h>
 }
 
@@ -69,7 +70,7 @@ namespace {
 
 key_seq from_special_str(const char* name)
 {
-    auto id = ::tigetstr(name);
+    auto id = ::tigetstr((NCURSES_CONST char*)name);
     if (!id || id == (char*)-1)
         throw std::runtime_error{"tigetstr() error for: "s + name};
     auto code = ::key_defined(name);

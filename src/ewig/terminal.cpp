@@ -26,6 +26,7 @@
 #include <iostream>
 
 extern "C" {
+#define _XOPEN_SOURCE_EXTENDED
 #include <ncurses.h>
 }
 

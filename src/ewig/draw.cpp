@@ -23,6 +23,7 @@
 #include <scelta.hpp>
 
 extern "C" {
+#define _XOPEN_SOURCE_EXTENDED
 #include <ncurses.h>
 }
 
@@ -85,7 +86,7 @@ void draw_text(const buffer& buf, coord size)
                                              (index)buf.content.size());
     auto [starts, ends] = display_selected_region(buf);
 
-    immer::for_each(first_ln, last_ln, [&] (auto ln) {
+    immer::for_each(first_ln, last_ln, [&, starts=starts, ends=ends] (auto ln) {
         str.clear();
         display_line_fill(ln, buf.scroll.col + col, 2*size.col, str);
         ::move(row, col);
@@ -94,9 +95,9 @@ void draw_text(const buffer& buf, coord size)
             auto hl_first = row == starts.row ? std::max(starts.col, 0) : 0;
             auto hl_last  = row == ends.row   ? std::max(ends.col, 0) : str.size();
             ::addnwstr(str.c_str(), hl_first);
-            ::attron(COLOR_PAIR(color::selection));
+            ::attron(COLOR_PAIR((int)color::selection));
             ::addnwstr(str.c_str() + hl_first, hl_last - hl_first);
-            ::attroff(COLOR_PAIR(color::selection));
+            ::attroff(COLOR_PAIR((int)color::selection));
             ::addnwstr(str.c_str() + hl_last, str.size() - hl_last);
         } else {
             ::addwstr(str.c_str());
@@ -126,7 +127,7 @@ void draw_mode_line(const buffer& buf, index maxcol)
             auto percentage = int(progress * 100);
             ::move(getcury(stdscr), maxcol - str.size() - 6);
             attrset(A_NORMAL | A_BOLD);
-            ::attron(COLOR_PAIR(color::mode_line_message));
+            ::attron(COLOR_PAIR((int)color::mode_line_message));
             ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
         },
         [&] (const loading_file& file) {
@@ -135,7 +136,7 @@ void draw_mode_line(const buffer& buf, index maxcol)
             auto percentage = int(progress * 100);
             ::move(getcury(stdscr), maxcol - str.size() - 6);
             attrset(A_NORMAL | A_BOLD);
-            ::attron(COLOR_PAIR(color::mode_line_message));
+            ::attron(COLOR_PAIR((int)color::mode_line_message));
             ::printw(" %s %*d%% ", str.c_str(), 2, percentage);
         },
         [](auto&&) {})(buf.from);
@@ -144,10 +145,10 @@ void draw_mode_line(const buffer& buf, index maxcol)
 void draw_message(const message& msg)
 {
     attrset(A_NORMAL);
-    ::attron(COLOR_PAIR(color::message));
+    ::attron(COLOR_PAIR((int)color::message));
     ::addstr(" ");
     ::addstr(msg.content.get().c_str());
-    ::attroff(COLOR_PAIR(color::message));
+    ::attroff(COLOR_PAIR((int)color::message));
 }
 
 void draw_text_cursor(const buffer& buf, coord window_size)
