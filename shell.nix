@@ -1,8 +1,8 @@
 { nixpkgs ? (import <nixpkgs> {}).fetchFromGitHub {
     owner  = "NixOS";
     repo   = "nixpkgs";
-    rev    = "d0d905668c010b65795b57afdf7f0360aac6245b";
-    sha256 = "1kqxfmsik1s1jsmim20n5l4kq6wq8743h5h17igfxxbbwwqry88l";
+    rev    = "2eaadfa5be7ce653a2bca31671c406a2ee7f7b0f";
+    sha256 = "1sh3338rp2nnyjqpfd2jj9qdl03cd5qy3qqpkgmlf16njzd6bs4y";
   }}:
 
 with import nixpkgs {};
