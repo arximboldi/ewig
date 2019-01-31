@@ -480,10 +480,10 @@ text selected_text(buffer buf)
                 : buf.content)
             .take(ends.row + 1)
             .drop(starts.row)
-            .update(ends.row-starts.row, [&] (auto l) {
+            .update(ends.row-starts.row, [&, ends = ends] (auto l) {
                 return l.take(line_char(l, ends.col));
             })
-            .update(0, [&] (auto l) {
+            .update(0, [&, starts = starts] (auto l) {
                 return l.drop(line_char(l, starts.col));
             });
 }
@@ -500,14 +500,14 @@ std::pair<buffer, text> cut(buffer buf)
                 : buf.content;
             buf.content = content
                 .take(starts.row + 1)
-                .update(starts.row, [&] (auto l1) {
+                .update(starts.row, [&, ends = ends, starts = starts] (auto l1) {
                     auto l2 = content[ends.row];
                     return l1.take(line_char(l1, starts.col))
                         +  l2.drop(line_char(l2, ends.col));
                 })
               + buf.content.drop(ends.row + 1);
         } else {
-            buf.content = buf.content.update(starts.row, [&] (auto l) {
+            buf.content = buf.content.update(starts.row, [&, starts = starts, ends = ends] (auto l) {
                 return l.take(line_char(l, starts.col))
                     +  l.drop(line_char(l, ends.col));
             });

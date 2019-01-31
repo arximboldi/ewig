@@ -26,8 +26,14 @@
 #include <iostream>
 
 extern "C" {
+
+#ifndef _XOPEN_SOURCE_EXTENDED
+    #define _XOPEN_SOURCE_EXTENDED
+#endif
+
 #include <ncurses.h>
 }
+
 
 using namespace std::placeholders;
 using namespace std::string_literals;

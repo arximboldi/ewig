@@ -121,7 +121,7 @@ void run(int argc, const char** argv, const std::string& fname)
         application{term.size(), key_map_emacs},
         update,
         draw,
-        lager::boost_asio_event_loop{serv, [&] { term.stop(); }},
+        lager::with_boost_asio_event_loop{serv, [&] { term.stop(); }},
         enhancer);
     term.start([&] (auto ev) { st.dispatch (ev); });
     st.dispatch(command_action{"load", fname});

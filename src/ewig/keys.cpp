@@ -22,8 +22,14 @@
 #include <cassert>
 
 extern "C" {
+
+#ifndef _XOPEN_SOURCE_EXTENDED
+    #define _XOPEN_SOURCE_EXTENDED
+#endif
+
 #include <ncurses.h>
 }
+
 
 using namespace std::string_literals;
 
@@ -69,7 +75,7 @@ namespace {
 
 key_seq from_special_str(const char* name)
 {
-    auto id = ::tigetstr(name);
+    auto id = ::tigetstr((NCURSES_CONST char*)name);
     if (!id || id == (char*)-1)
         throw std::runtime_error{"tigetstr() error for: "s + name};
     auto code = ::key_defined(name);
