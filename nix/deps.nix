@@ -6,14 +6,15 @@ rec {
   immer = stdenv.mkDerivation rec {
     name = "immer-${version}";
     version = "git-${commit}";
-    commit = "2885357e5fc9fba171c4613f1841591af9e31cf1";
+    commit = "ed8999d81f1c7763705c829deb9122cde19195f4";
     src = fetchFromGitHub {
       owner = "arximboldi";
       repo = "immer";
       rev = commit;
-      sha256 = "0pg6y4n3ibx4axpl1lnjik51mzvr8fyafdaqpc259lljzvi96r05";
+      sha256 = "009iazyjzzh4b5yg7d7y69g4p3gyj8ripgjxcbpyrp92967d45q7";
     };
     nativeBuildInputs = [ cmake ];
+    buildInputs = [ boost ];
     meta = with stdenv.lib; {
       homepage = "http://sinusoid.es/immer";
       description = "Immutable data structures for C++";
@@ -105,12 +106,12 @@ rec {
   lager = stdenv.mkDerivation rec {
     name = "lager";
     version = "git-${commit}";
-    commit = "86a2f39ae2f753a91eb22badc2bfcd2663654dfa";
+    commit = "bee1c04c058b872ea998421d43587de9e90f079e";
     src = fetchFromGitHub {
       owner = "arximboldi";
       repo = "lager";
       rev = commit;
-      sha256 = "1nfqdzxglz1n2clc2r6dl63lr27iqq4kvfm9x45fzrg073p26d7i";
+      sha256 = "1222nydan0vflgfyijvkb1rwgspnbkimp05mm9zwzx6i3hhax4yk";
     };
     buildInputs = [
       ncurses
