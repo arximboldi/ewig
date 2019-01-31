@@ -22,9 +22,14 @@
 #include <cassert>
 
 extern "C" {
-#define _XOPEN_SOURCE_EXTENDED
+
+#ifndef _XOPEN_SOURCE_EXTENDED
+    #define _XOPEN_SOURCE_EXTENDED
+#endif
+
 #include <ncurses.h>
 }
+
 
 using namespace std::string_literals;
 

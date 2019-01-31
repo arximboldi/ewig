@@ -202,7 +202,7 @@ line get_line(const text& txt, index row)
 
 index line_length(const line& ln)
 {
-    return utf8::unchecked::distance(std::begin(ln), std::end(ln));
+    return utf8::unchecked::distance(ln.begin(), ln.end());
 }
 
 std::size_t line_char(const line& ln, index col)
