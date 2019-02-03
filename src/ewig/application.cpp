@@ -230,17 +230,19 @@ std::pair<application, lager::effect<action>> update(application state, action e
                 if (it != map.end()) {
                     if (!it->second->empty()) {
                         auto cmd = it->second;
-                        auto result = update(state, command_action{cmd, {}});
-                        return {clear_input(result.first), result.second};
+                        return {clear_input(state), [cmd] (auto ctx) {
+                            ctx.dispatch(command_action{cmd, {}});
+                        }};
                     }
                 } else if (key_seq{ev.key} != key::ctrl('[')) {
                     using std::get;
                     auto is_single_char = state.input.size() == 1;
                     auto [kres, kkey] = ev.key;
                     if (is_single_char && !kres && !std::iscntrl(kkey)) {
-                        auto result = update(
-                            state, command_action{"insert", (wchar_t)kkey});
-                        return {clear_input(result.first), result.second};
+                        auto key = (wchar_t)kkey;
+                        return {clear_input(state), [key] (auto ctx) {
+                            ctx.dispatch(command_action{"insert", });
+                        }};
                     } else {
                         return {clear_input(put_message(state, "unbound key sequence")),
                                 lager::noop};
