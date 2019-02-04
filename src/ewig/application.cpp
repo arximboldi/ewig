@@ -241,7 +241,7 @@ std::pair<application, lager::effect<action>> update(application state, action e
                     if (is_single_char && !kres && !std::iscntrl(kkey)) {
                         auto key = (wchar_t)kkey;
                         return {clear_input(state), [key] (auto ctx) {
-                            ctx.dispatch(command_action{"insert", });
+                            ctx.dispatch(command_action{"insert", key});
                         }};
                     } else {
                         return {clear_input(put_message(state, "unbound key sequence")),
