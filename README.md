@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/arximboldi/ewig.svg?branch=master)](https://travis-ci.org/arximboldi/ewig)
+[![Build Status](https://github.com/arximboldi/zug/workflows/test/badge.svg)](https://github.com/arximboldi/zug/actions?query=workflow%3Atest+branch%3Amaster)
 <a href="https://sinusoid.al"><img align="right" src="https://cdn.rawgit.com/arximboldi/immer/355a113782aedc2ea22463444014809269c2376d/doc/_static/sinusoidal-badge.svg"></a>
 
 <p align="center">
