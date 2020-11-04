@@ -141,7 +141,7 @@ auto save_file_effect(immer::box<std::string> file_name,
                       text old_content,
                       text new_content)
 {
-    constexpr auto progress_report_rate_lines = (1 << 20) / 40;
+    constexpr auto progress_report_rate_lines = std::size_t{(1 << 20) / 40};
 
     return [=] (auto& ctx) {
         ctx.async([=] {
