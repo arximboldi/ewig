@@ -15,7 +15,7 @@ rec {
     };
     nativeBuildInputs = [ cmake ];
     buildInputs = [ boost ];
-    meta = with stdenv.lib; {
+    meta = with lib; {
       homepage = "http://sinusoid.es/immer";
       description = "Immutable data structures for C++";
       license = licenses.lgpl3;
@@ -34,7 +34,7 @@ rec {
     };
     dontBuild = true;
     installPhase = "mkdir -vp $out/include; cp -vr $src/include/* $out/include/";
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "Syntax sugar for variants";
       license = licenses.mit;
     };
@@ -52,7 +52,7 @@ rec {
     };
     dontBuild = true;
     installPhase = "mkdir -vp $out/include; cp -vr $src/source/* $out/include/";
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "UTF-8 with C++ in a Portable Way";
       license = licenses.mit;
     };
@@ -69,7 +69,7 @@ rec {
       sha256 = "1qg5frqvfhb8bpfiz9wivwjz2icy3si112grv188kgypws58n832";
     };
     propagatedBuildInputs = [ libmicrohttpd ];
-    nativeBuildInputs = [ autoreconfHook gcc5 ];
+    nativeBuildInputs = [ autoreconfHook gcc7 ];
     configureScript = "../configure";
     preConfigure = ''
       substituteInPlace ./configure \
@@ -77,7 +77,7 @@ rec {
         --replace "/bin/pwd" "${coreutils}/bin/pwd"
       mkdir build && cd build
     '';
-    meta = with stdenv.lib; {
+    meta = with lib; {
       homepage = "https://github.com/etr/libhttpserver";
       description = "C++ library for creating an embedded Rest HTTP server (and more)";
       license = licenses.lgpl2;
@@ -96,7 +96,7 @@ rec {
     };
     nativeBuildInputs = [ cmake ];
     cmakeFlags="-DJUST_INSTALL_CEREAL=true";
-    meta = with stdenv.lib; {
+    meta = with lib; {
       homepage = "http://uscilab.github.io/cereal";
       description = "A C++11 library for serialization";
       license = licenses.bsd3;
@@ -127,7 +127,7 @@ rec {
       libhttpserver
       cereal
     ];
-    meta = with stdenv.lib; {
+    meta = with lib; {
       homepage    = "https://github.com/arximboldi/lager";
       description = "library for functional interactive c++ programs";
       license     = licenses.lgpl3Plus;

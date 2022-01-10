@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
     deps.utfcpp
     deps.lager
   ];
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage    = "https://github.com/arximboldi/ewig";
     description = "The eternal text editor";
     license     = licenses.gpl3;
