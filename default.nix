@@ -3,10 +3,9 @@
 with import nixpkgs {};
 
 let
-  deps = import ./nix/deps.nix { inherit nixpkgs; };
-in
+deps = import ./nix/deps.nix { inherit nixpkgs; };
 
-stdenv.mkDerivation rec {
+releaseBuild = stdenv.mkDerivation rec {
   name = "ewig-git";
   version = "git";
   src = builtins.filterSource (path: type:
@@ -29,4 +28,14 @@ stdenv.mkDerivation rec {
     description = "The eternal text editor";
     license     = licenses.gpl3;
   };
-}
+
+  passthru.debug = releaseBuild.overrideAttrs (_: {
+    makeFlags = "ewig-debug";
+    installPhase = ''
+      mkdir -p $out/bin
+      cp ewig-debug $out/bin/ewig-debug
+    '';
+  });
+};
+
+in releaseBuild
