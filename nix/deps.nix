@@ -61,12 +61,12 @@ rec {
   libhttpserver = stdenv.mkDerivation rec {
     name = "libhttpserver-${version}";
     version = "git-${commit}";
-    commit = "4895f43ed29195af70beb47bcfd1ef3ab4555665";
+    commit = "36cef5bce3337caa858bc21aa0ca48c33d236b17";
     src = fetchFromGitHub {
       owner = "etr";
       repo = "libhttpserver";
       rev = commit;
-      sha256 = "1qg5frqvfhb8bpfiz9wivwjz2icy3si112grv188kgypws58n832";
+      hash = "sha256-reGFjtLNUNOiq6wGR5FmAZT6lv1UZyQoS8GxARfDkIY=";
     };
     propagatedBuildInputs = [ libmicrohttpd ];
     nativeBuildInputs = [ autoreconfHook gcc7 ];
@@ -76,6 +76,7 @@ rec {
         --replace "/usr/bin/file" "${file}/bin/file" \
         --replace "/bin/pwd" "${coreutils}/bin/pwd"
       mkdir build && cd build
+      export CFLAGS=-fpermissive CXXFLAGS="-fpermissive -std=c++11"
     '';
     meta = with lib; {
       homepage = "https://github.com/etr/libhttpserver";
