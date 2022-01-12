@@ -66,7 +66,7 @@ rec {
       owner = "etr";
       repo = "libhttpserver";
       rev = commit;
-      hash = "sha256-reGFjtLNUNOiq6wGR5FmAZT6lv1UZyQoS8GxARfDkIY=";
+      sha256 = "sha256-reGFjtLNUNOiq6wGR5FmAZT6lv1UZyQoS8GxARfDkIY=";
     };
     propagatedBuildInputs = [ libmicrohttpd ];
     nativeBuildInputs = [ autoreconfHook gcc7 ];
