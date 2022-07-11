@@ -22,6 +22,7 @@ releaseBuild = stdenv.mkDerivation rec {
     deps.scelta
     deps.utfcpp
     deps.lager
+    deps.zug
   ];
   meta = with lib; {
     homepage    = "https://github.com/arximboldi/ewig";
