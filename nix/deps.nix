@@ -107,12 +107,12 @@ rec {
   lager = stdenv.mkDerivation rec {
     name = "lager";
     version = "git-${commit}";
-    commit = "bee1c04c058b872ea998421d43587de9e90f079e";
+    commit = "56125daacdd2301ab2a8298801d247a593bd4d25";
     src = fetchFromGitHub {
       owner = "arximboldi";
       repo = "lager";
       rev = commit;
-      sha256 = "1222nydan0vflgfyijvkb1rwgspnbkimp05mm9zwzx6i3hhax4yk";
+      sha256 = "093kw3xahl9lgscbkkx5n6f0mmd0gwa4ra1l34gan1ywhf24kn9v";
     };
     buildInputs = [
       ncurses

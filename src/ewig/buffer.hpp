@@ -23,7 +23,7 @@
 #include <ewig/coord.hpp>
 
 #include <lager/store.hpp>
-#include <lager/debug/cereal/struct.hpp>
+#include <lager/extra/struct.hpp>
 
 #include <immer/box.hpp>
 #include <immer/flex_vector.hpp>
@@ -44,17 +44,15 @@ using text = immer::flex_vector<line>;
 
 struct no_file
 {
-    static immer::box<std::string> name;
-    static text content;
+    immer::box<std::string> name = "*unnamed*";
+    text content = {};
 };
-LAGER_CEREAL_STRUCT(no_file, (name)(content));
 
 struct existing_file
 {
     immer::box<std::string> name;
     text content;
 };
-LAGER_CEREAL_STRUCT(existing_file, (name)(content));
 
 struct saving_file
 {
@@ -62,7 +60,6 @@ struct saving_file
     text content;
     std::size_t saved_lines;
 };
-LAGER_CEREAL_STRUCT(saving_file, (name)(content));
 
 struct loading_file
 {
@@ -71,7 +68,6 @@ struct loading_file
     std::streamoff loaded_bytes;
     std::streamoff total_bytes;
 };
-LAGER_CEREAL_STRUCT(loading_file, (name)(content)(loaded_bytes)(total_bytes));
 
 using file = std::variant<no_file,
                           existing_file,
@@ -83,7 +79,6 @@ struct snapshot
     text content;
     coord cursor;
 };
-LAGER_CEREAL_STRUCT(snapshot, (content)(cursor));
 
 struct buffer
 {
@@ -95,9 +90,6 @@ struct buffer
     immer::vector<snapshot> history;
     std::optional<std::size_t> history_pos;
 };
-LAGER_CEREAL_STRUCT(
-    buffer,
-    (from)(content)(cursor)(scroll)(selection_start)(history)(history_pos));
 
 struct load_progress_action { loading_file file; };
 struct load_done_action { existing_file file; };
@@ -105,12 +97,6 @@ struct load_error_action { existing_file file; std::exception_ptr err; };
 struct save_progress_action { saving_file file; };
 struct save_done_action { existing_file file; };
 struct save_error_action { existing_file file; std::exception_ptr err; };
-LAGER_CEREAL_STRUCT(load_progress_action, (file));
-LAGER_CEREAL_STRUCT(load_done_action, (file));
-LAGER_CEREAL_STRUCT(load_error_action, (file));
-LAGER_CEREAL_STRUCT(save_progress_action, (file));
-LAGER_CEREAL_STRUCT(save_done_action, (file));
-LAGER_CEREAL_STRUCT(save_error_action, (file));
 
 using buffer_action = std::variant<load_progress_action,
                                    load_done_action,
@@ -192,3 +178,16 @@ buffer undo(buffer);
 std::pair<buffer, std::string> record(buffer before, buffer after);
 
 } // namespace ewig
+
+LAGER_STRUCT(ewig, no_file, name, content);
+LAGER_STRUCT(ewig, existing_file, name, content);
+LAGER_STRUCT(ewig, saving_file, name, content, saved_lines);
+LAGER_STRUCT(ewig, loading_file, name, content, loaded_bytes, total_bytes);
+LAGER_STRUCT(ewig, snapshot, content, cursor);
+LAGER_STRUCT(ewig, buffer, from, content, cursor, scroll, selection_start, history, history_pos);
+LAGER_STRUCT(ewig, load_progress_action, file);
+LAGER_STRUCT(ewig, load_done_action, file);
+LAGER_STRUCT(ewig, load_error_action, file, err);
+LAGER_STRUCT(ewig, save_progress_action, file);
+LAGER_STRUCT(ewig, save_done_action, file);
+LAGER_STRUCT(ewig, save_error_action, file, err);

@@ -139,7 +139,7 @@ std::pair<application, lager::effect<action>> quit(application app)
 {
     return {
         put_message(app, "quitting... (waiting for operations to finish)"),
-        [] (auto&& ctx) { ctx.finish(); }
+        [] (auto&& ctx) { ctx.loop().finish(); }
     };
 }
 

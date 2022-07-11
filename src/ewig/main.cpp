@@ -28,16 +28,27 @@
 
 
 #if EWIG_ENABLE_DEBUGGER
-#include <lager/debug/enable.hpp>
+#include <lager/debug/debugger.hpp>
 #include <lager/debug/http_server.hpp>
-#include <lager/debug/cereal/immer_vector.hpp>
-#include <lager/debug/cereal/immer_box.hpp>
-#include <lager/debug/cereal/tuple.hpp>
+#include <lager/resources_path.hpp>
+#include <lager/extra/cereal/immer_box.hpp>
+#include <lager/extra/cereal/tuple.hpp>
+#include <cereal/types/string.hpp>
 #include <cereal/types/unordered_map.hpp>
 
 namespace cereal {
 
-LAGER_CEREAL_STRUCT(std::monostate);
+// do not save serialize exceptions
+
+template <typename Archive>
+void save(Archive& ar, const std::exception_ptr& e)
+{
+}
+
+template <typename Archive>
+void load(Archive& ar, std::exception_ptr& e)
+{
+}
 
 // custom serialization of text to make text look prettier by looking
 // like a list of strings, as opposed to just a list of numbers
@@ -110,21 +121,22 @@ const auto key_map_emacs = make_key_map(
 void run(int argc, const char** argv, const std::string& fname)
 {
 #if EWIG_ENABLE_DEBUGGER
-    auto debugger = lager::http_debug_server{argc, argv, 8080};
-    auto enhancer = lager::enable_debug(debugger);
-#else
-    auto enhancer = lager::identity;
+    auto debugger =
+        lager::http_debug_server{argc, argv, 8080, lager::resources_path()};
 #endif
     auto serv = boost::asio::io_service{};
     auto term = terminal{serv};
-    auto st   = lager::make_store<action>(
+    auto store = lager::make_store<action>(
         application{term.size(), key_map_emacs},
-        update,
-        draw,
-        lager::with_boost_asio_event_loop{serv, [&] { term.stop(); }},
-        enhancer);
-    term.start([&] (auto ev) { st.dispatch (ev); });
-    st.dispatch(command_action{"load", fname});
+        lager::with_boost_asio_event_loop{serv.get_executor(), [&] { term.stop(); }},
+        zug::comp(
+#ifdef EWIG_ENABLE_DEBUGGER
+            lager::with_debugger(debugger),
+#endif
+            lager::identity));
+    watch(store, draw);
+    term.start([&] (auto ev) { store.dispatch(ev); });
+    store.dispatch(command_action{"load", fname});
     serv.run();
 }
 
