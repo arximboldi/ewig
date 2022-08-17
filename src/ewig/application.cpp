@@ -45,7 +45,7 @@ struct arg<void>
     template <typename Fn, typename Arg, typename... Args>
     static auto invoke(Fn&& fn, const Arg& arg, Args&&... args)
     {
-        assert(std::holds_alternative<std::monostate>(arg));
+        assert(std::holds_alternative<none_t>(arg));
         return std::forward<Fn>(fn)(std::forward<Args>(args)...);
     }
 };

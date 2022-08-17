@@ -31,7 +31,9 @@
 
 namespace ewig {
 
-using arg_t = std::variant<std::monostate,
+struct none_t {};
+
+using arg_t = std::variant<none_t,
                           std::string,
                           wchar_t>;
 
@@ -81,6 +83,7 @@ application apply_edit(application state, coord size, std::pair<buffer, text> ed
 
 } // namespace ewig
 
+LAGER_STRUCT(ewig, none_t);
 LAGER_STRUCT(ewig, key_action, key);
 LAGER_STRUCT(ewig, resize_action, size);
 LAGER_STRUCT(ewig, command_action, name, arg);
