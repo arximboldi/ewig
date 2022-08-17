@@ -24,35 +24,33 @@
 #include <ewig/buffer.hpp>
 
 #include <lager/store.hpp>
-#include <lager/debug/cereal/struct.hpp>
+#include <lager/extra/cereal/struct.hpp>
 
 #include <ctime>
 #include <variant>
 
 namespace ewig {
 
-using arg_t = std::variant<std::monostate,
+struct none_t {};
+
+using arg_t = std::variant<none_t,
                           std::string,
                           wchar_t>;
 
 struct key_action { key_code key; };
 struct resize_action { coord size; };
 struct command_action { immer::box<std::string> name; arg_t arg; };
-LAGER_CEREAL_STRUCT(key_action, (key));
-LAGER_CEREAL_STRUCT(resize_action, (size));
-LAGER_CEREAL_STRUCT(command_action, (name)(arg));
 
 using action = std::variant<command_action,
                            key_action,
-                           resize_action,
-                           buffer_action>;
+                           buffer_action,
+                           resize_action>;
 
 struct message
 {
     std::time_t time_stamp;
     immer::box<std::string> content;
 };
-LAGER_CEREAL_STRUCT(message, (time_stamp)(content));
 
 struct application
 {
@@ -63,9 +61,6 @@ struct application
     immer::vector<text> clipboard;
     immer::vector<message> messages;
 };
-LAGER_CEREAL_STRUCT(
-    application,
-    (window_size)(keys)(input)(current)(clipboard)(messages));
 
 using command = std::function<
     std::pair<application, lager::effect<action>>(
@@ -87,3 +82,10 @@ application apply_edit(application state, coord size, buffer edit);
 application apply_edit(application state, coord size, std::pair<buffer, text> edit);
 
 } // namespace ewig
+
+LAGER_STRUCT(ewig, none_t);
+LAGER_STRUCT(ewig, key_action, key);
+LAGER_STRUCT(ewig, resize_action, size);
+LAGER_STRUCT(ewig, command_action, name, arg);
+LAGER_STRUCT(ewig, message, time_stamp, content);
+LAGER_STRUCT(ewig, application, window_size, keys, input, current, clipboard, messages);

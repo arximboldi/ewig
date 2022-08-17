@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <lager/debug/cereal/struct.hpp>
+#include <lager/extra/struct.hpp>
 
 namespace ewig {
 
@@ -31,21 +31,12 @@ struct coord
     index row = {};
     index col = {};
 };
-LAGER_CEREAL_STRUCT(coord, (row)(col));
 
 inline bool operator<(const coord& a, const coord& b)
 {
     return a.row < b.row || (a.row == b.row && a.col < b.col);
 }
 
-inline bool operator==(const coord& a, const coord& b)
-{
-    return a.row == b.row && a.col == b.col;
-}
-
-inline bool operator!=(const coord& a, const coord& b)
-{
-    return !(a == b);
-}
-
 } // namespace ewig
+
+LAGER_STRUCT(ewig, coord, row, col);

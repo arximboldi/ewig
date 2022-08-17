@@ -45,7 +45,7 @@ struct arg<void>
     template <typename Fn, typename Arg, typename... Args>
     static auto invoke(Fn&& fn, const Arg& arg, Args&&... args)
     {
-        assert(std::holds_alternative<std::monostate>(arg));
+        assert(std::holds_alternative<none_t>(arg));
         return std::forward<Fn>(fn)(std::forward<Args>(args)...);
     }
 };
@@ -139,7 +139,7 @@ std::pair<application, lager::effect<action>> quit(application app)
 {
     return {
         put_message(app, "quitting... (waiting for operations to finish)"),
-        [] (auto&& ctx) { ctx.finish(); }
+        [] (auto&& ctx) { ctx.loop().finish(); }
     };
 }
 

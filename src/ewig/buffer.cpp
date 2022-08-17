@@ -33,9 +33,6 @@
 
 namespace ewig {
 
-immer::box<std::string> no_file::name = "*unnamed*";
-text no_file::content = {};
-
 bool load_in_progress(const buffer& buf)
 {
     return std::holds_alternative<loading_file>(buf.from);
@@ -98,7 +95,7 @@ auto load_file_effect(immer::box<std::string> file_name)
     constexpr auto progress_report_rate_bytes = 1 << 20;
 
     return [=] (auto& ctx) {
-        ctx.async([=] {
+        ctx.loop().async([=] {
             auto content = text{}.transient();
             auto file = std::ifstream{};
             file.exceptions(std::fstream::badbit | std::fstream::failbit);
@@ -137,14 +134,14 @@ auto load_file_effect(immer::box<std::string> file_name)
     };
 }
 
-auto save_file_effect(immer::box<std::string> file_name,
+lager::effect<buffer_action> save_file_effect(immer::box<std::string> file_name,
                       text old_content,
                       text new_content)
 {
     constexpr auto progress_report_rate_lines = std::size_t{(1 << 20) / 40};
 
     return [=] (auto& ctx) {
-        ctx.async([=] {
+        ctx.loop().async([=] {
             auto progress = saving_file{ file_name, new_content, 0 };
             auto file = std::ofstream{};
             file.exceptions(std::fstream::badbit | std::fstream::failbit);
@@ -179,7 +176,8 @@ std::pair<buffer, lager::effect<buffer_action>> save_buffer(buffer buf)
 {
     auto file = std::get<existing_file>(buf.from);
     buf.from = saving_file{file.name, buf.content, {}};
-    return { buf, save_file_effect(file.name, file.content, buf.content) };
+    auto effect = save_file_effect(file.name, file.content, buf.content);
+    return { buf, effect };
 }
 
 std::pair<buffer, lager::effect<buffer_action>> load_buffer(buffer buf, const std::string& fname)

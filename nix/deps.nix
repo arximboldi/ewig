@@ -6,12 +6,12 @@ rec {
   immer = stdenv.mkDerivation rec {
     name = "immer-${version}";
     version = "git-${commit}";
-    commit = "ed8999d81f1c7763705c829deb9122cde19195f4";
+    commit = "e5d79ed80ec74d511cc4f52fb68feeac66507f2c";
     src = fetchFromGitHub {
       owner = "arximboldi";
       repo = "immer";
       rev = commit;
-      sha256 = "009iazyjzzh4b5yg7d7y69g4p3gyj8ripgjxcbpyrp92967d45q7";
+      sha256 = "1h6m3hc26g15dhka6di6lphrl7wrgrxzn3nq0rfwg3iw10ifkw9f";
     };
     nativeBuildInputs = [ cmake ];
     buildInputs = [ boost ];
@@ -58,33 +58,6 @@ rec {
     };
   };
 
-  libhttpserver = stdenv.mkDerivation rec {
-    name = "libhttpserver-${version}";
-    version = "git-${commit}";
-    commit = "36cef5bce3337caa858bc21aa0ca48c33d236b17";
-    src = fetchFromGitHub {
-      owner = "etr";
-      repo = "libhttpserver";
-      rev = commit;
-      sha256 = "sha256-reGFjtLNUNOiq6wGR5FmAZT6lv1UZyQoS8GxARfDkIY=";
-    };
-    propagatedBuildInputs = [ libmicrohttpd ];
-    nativeBuildInputs = [ autoreconfHook gcc7 ];
-    configureScript = "../configure";
-    preConfigure = ''
-      substituteInPlace ./configure \
-        --replace "/usr/bin/file" "${file}/bin/file" \
-        --replace "/bin/pwd" "${coreutils}/bin/pwd"
-      mkdir build && cd build
-      export CFLAGS=-fpermissive CXXFLAGS="-fpermissive -std=c++11"
-    '';
-    meta = with lib; {
-      homepage = "https://github.com/etr/libhttpserver";
-      description = "C++ library for creating an embedded Rest HTTP server (and more)";
-      license = licenses.lgpl2;
-    };
-  };
-
   cereal = stdenv.mkDerivation rec {
     name = "cereal-${version}";
     version = "git-arximboldi-${commit}";
@@ -107,12 +80,12 @@ rec {
   lager = stdenv.mkDerivation rec {
     name = "lager";
     version = "git-${commit}";
-    commit = "bee1c04c058b872ea998421d43587de9e90f079e";
+    commit = "56125daacdd2301ab2a8298801d247a593bd4d25";
     src = fetchFromGitHub {
       owner = "arximboldi";
       repo = "lager";
       rev = commit;
-      sha256 = "1222nydan0vflgfyijvkb1rwgspnbkimp05mm9zwzx6i3hhax4yk";
+      sha256 = "093kw3xahl9lgscbkkx5n6f0mmd0gwa4ra1l34gan1ywhf24kn9v";
     };
     buildInputs = [
       ncurses
@@ -125,13 +98,31 @@ rec {
     propagatedBuildInputs = [
       boost
       immer
-      libhttpserver
+      zug
       cereal
     ];
     meta = with lib; {
       homepage    = "https://github.com/arximboldi/lager";
       description = "library for functional interactive c++ programs";
       license     = licenses.lgpl3Plus;
+    };
+  };
+
+  zug = stdenv.mkDerivation rec {
+    name = "zug";
+    version = "git-${commit}";
+    commit = "deb266f4c7c35d325de7eb3d033f06e0809495f2";
+    src = fetchFromGitHub {
+      owner = "arximboldi";
+      repo = "zug";
+      rev = commit;
+      sha256 = "0af6xv22y35zyky07h52bwb2dksqz138sr59kxbnnj7vwsiq5j5s";
+    };
+    nativeBuildInputs = [ cmake ];
+    meta = with lib; {
+      homepage = "http://sinusoid.es/zug";
+      description = "Transducers for C++";
+      license = licenses.boost;
     };
   };
 }

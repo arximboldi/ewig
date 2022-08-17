@@ -24,6 +24,7 @@ stdenv.mkDerivation rec {
     deps.scelta
     deps.utfcpp
     deps.lager
+    deps.zug
   ];
   shellHook = ''
     export EWIG_ROOT=`dirname ${toString ./shell.nix}`
