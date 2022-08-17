@@ -33,6 +33,7 @@
 #include <lager/resources_path.hpp>
 #include <lager/extra/cereal/immer_box.hpp>
 #include <lager/extra/cereal/tuple.hpp>
+
 #include <cereal/types/string.hpp>
 #include <cereal/types/unordered_map.hpp>
 
@@ -128,12 +129,11 @@ void run(int argc, const char** argv, const std::string& fname)
     auto term = terminal{serv};
     auto store = lager::make_store<action>(
         application{term.size(), key_map_emacs},
-        lager::with_boost_asio_event_loop{serv.get_executor(), [&] { term.stop(); }},
-        zug::comp(
+        lager::with_boost_asio_event_loop{serv.get_executor(), [&] { term.stop(); }}
 #ifdef EWIG_ENABLE_DEBUGGER
-            lager::with_debugger(debugger),
+        , lager::with_debugger(debugger)
 #endif
-            lager::identity));
+        );
     watch(store, draw);
     term.start([&] (auto ev) { store.dispatch(ev); });
     store.dispatch(command_action{"load", fname});
