@@ -16,7 +16,6 @@ find_package(Boost 1.56 REQUIRED system)
 find_package(Threads)
 find_package(Immer)
 find_package(Lager)
-find_package(LibHttpServer)
 find_path(SCELTA_INCLUDE_DIR scelta.hpp)
 find_path(UTFCPP_INCLUDE_DIR utf8.h)
 
@@ -50,9 +49,7 @@ target_link_libraries(ewig ${ewig_link_libraries})
 add_executable(ewig-debug ${ewig_sources})
 target_compile_definitions(ewig-debug PUBLIC -DEWIG_ENABLE_DEBUGGER=1)
 target_include_directories(ewig-debug PUBLIC ${ewig_include_directories})
-target_include_directories(ewig-debug SYSTEM PUBLIC ${ewig_system_include_directories}
-  ${LIBHTTPSERVER_INCLUDE_DIRS})
-target_link_libraries(ewig-debug ${ewig_link_libraries}
-  ${LIBHTTPSERVER_LIBRARIES})
+target_include_directories(ewig-debug SYSTEM PUBLIC ${ewig_system_include_directories})
+target_link_libraries(ewig-debug ${ewig_link_libraries})
 
 install(TARGETS ewig DESTINATION bin)

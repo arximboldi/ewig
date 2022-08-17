@@ -58,33 +58,6 @@ rec {
     };
   };
 
-  libhttpserver = stdenv.mkDerivation rec {
-    name = "libhttpserver-${version}";
-    version = "git-${commit}";
-    commit = "36cef5bce3337caa858bc21aa0ca48c33d236b17";
-    src = fetchFromGitHub {
-      owner = "etr";
-      repo = "libhttpserver";
-      rev = commit;
-      sha256 = "sha256-reGFjtLNUNOiq6wGR5FmAZT6lv1UZyQoS8GxARfDkIY=";
-    };
-    propagatedBuildInputs = [ libmicrohttpd ];
-    nativeBuildInputs = [ autoreconfHook gcc7 ];
-    configureScript = "../configure";
-    preConfigure = ''
-      substituteInPlace ./configure \
-        --replace "/usr/bin/file" "${file}/bin/file" \
-        --replace "/bin/pwd" "${coreutils}/bin/pwd"
-      mkdir build && cd build
-      export CFLAGS=-fpermissive CXXFLAGS="-fpermissive -std=c++11"
-    '';
-    meta = with lib; {
-      homepage = "https://github.com/etr/libhttpserver";
-      description = "C++ library for creating an embedded Rest HTTP server (and more)";
-      license = licenses.lgpl2;
-    };
-  };
-
   cereal = stdenv.mkDerivation rec {
     name = "cereal-${version}";
     version = "git-arximboldi-${commit}";
@@ -126,7 +99,6 @@ rec {
       boost
       immer
       zug
-      libhttpserver
       cereal
     ];
     meta = with lib; {
